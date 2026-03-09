@@ -34,8 +34,12 @@ export default function RegisterPage() {
       });
 
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to create account.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to create account.");
+      } else {
+        setError("Failed to create account.");
+      }
     } finally {
       setLoading(false);
     }
@@ -56,8 +60,12 @@ export default function RegisterPage() {
       }, { merge: true });
 
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Google sign in failed.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Google sign in failed.");
+      } else {
+        setError("Google sign in failed.");
+      }
     } finally {
       setLoading(false);
     }

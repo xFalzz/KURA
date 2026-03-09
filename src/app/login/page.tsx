@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Gamepad2, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Gamepad2, Mail, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -23,8 +23,12 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to login. Please check your credentials.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to login. Please check your credentials.");
+      } else {
+        setError("Failed to login. Please check your credentials.");
+      }
     } finally {
       setLoading(false);
     }
@@ -37,8 +41,12 @@ export default function LoginPage() {
     try {
       await signInWithPopup(auth, provider);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Google sign in failed.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Google sign in failed.");
+      } else {
+        setError("Google sign in failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -127,7 +135,7 @@ export default function LoginPage() {
         </Button>
 
         <p className="text-center text-muted-foreground text-sm">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/register" className="text-neon-violet hover:underline font-medium">
             Sign up
           </Link>

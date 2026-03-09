@@ -6,7 +6,6 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Loader2, FolderOpen, Plus } from "lucide-react";
-import Link from "next/link";
 
 interface Collection {
   id: string;

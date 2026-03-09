@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
@@ -46,18 +46,24 @@ export default function LibraryPage() {
     return () => unsub();
   }, [router]);
 
-  const fetchLibrary = useCallback(async (uid: string) => {
-    const q = query(collection(db, "library"), where("userId", "==", uid));
-    const snap = await getDocs(q);
-    const items = snap.docs.map(d => ({ docId: d.id, ...d.data() } as LibraryItem));
-    setLibrary(items);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
+    let isMounted = true;
     if (!user) return;
-    fetchLibrary(user.uid);
-  }, [user, fetchLibrary]);
+
+    const getLibrary = async () => {
+      const q = query(collection(db, "library"), where("userId", "==", user.uid));
+      const snap = await getDocs(q);
+      if (isMounted) {
+        const items = snap.docs.map(d => ({ docId: d.id, ...d.data() } as LibraryItem));
+        setLibrary(items);
+        setLoading(false);
+      }
+    };
+
+    getLibrary();
+
+    return () => { isMounted = false; };
+  }, [user]);
 
   const removeFromLibrary = async (docId: string) => {
     await deleteDoc(doc(db, "library", docId));
