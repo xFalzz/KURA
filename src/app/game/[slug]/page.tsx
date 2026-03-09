@@ -4,6 +4,7 @@ import { Star, ChevronLeft, Globe, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import AddToWishlistButton from "@/components/AddToWishlistButton";
 import RatingsBar from "@/components/RatingsBar";
+import ReviewsSection from "@/components/ReviewsSection";
 import type { Metadata } from "next";
 import type { Platform, Genre, Tag, Developer, Publisher, StoreEntry, EsrbRating, Rating, Screenshot } from "@/lib/types";
 
@@ -207,6 +208,13 @@ export default async function GameDetailPage({ params }: Props) {
             {game.ratings?.length > 0 && (
               <RatingsBar ratings={game.ratings} />
             )}
+
+            {/* User Reviews Section */}
+            <ReviewsSection 
+              gameId={game.id.toString()} 
+              gameName={game.name} 
+              gameSlug={game.slug} 
+            />
           </div>
 
           {/* Right Sidebar */}

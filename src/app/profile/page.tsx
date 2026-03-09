@@ -43,6 +43,7 @@ export default function ProfilePage() {
   const [tab, setTab] = useState<TabId>("overview");
   const [library, setLibrary] = useState<{ game: Game; status: string }[]>([]);
   const [wishlist, setWishlist] = useState<Game[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [following, setFollowing] = useState<ProfileUser[]>([]);
   const [followers, setFollowers] = useState<ProfileUser[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -105,6 +106,10 @@ export default function ProfilePage() {
         const q = query(collection(db, "wishlists"), where("userId", "==", profileUser.uid));
         const snap = await getDocs(q);
         if (!cancelled) setWishlist(snap.docs.map(d => (d.data() as { game: Game }).game));
+      } else if (tab === "reviews") {
+        const q = query(collection(db, "reviews"), where("userId", "==", profileUser.uid));
+        const snap = await getDocs(q);
+        if (!cancelled) setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       } else if (tab === "following") {
         const q = query(collection(db, "follows"), where("followerId", "==", profileUser.uid));
         const snap = await getDocs(q);
@@ -291,11 +296,34 @@ export default function ProfilePage() {
 
             {/* REVIEWS */}
             {tab === "reviews" && (
-              <div className="flex flex-col items-center py-16 gap-4 text-center">
-                <Star className="w-12 h-12 text-muted-foreground/30" />
-                <p className="text-muted-foreground">No reviews written yet.</p>
-                <Link href="/reviews" className="text-sm text-violet-500 hover:underline">Browse Reviews</Link>
-              </div>
+              reviews.length === 0 ? (
+                <div className="flex flex-col items-center py-16 gap-4 text-center">
+                  <Star className="w-12 h-12 text-muted-foreground/30" />
+                  <p className="text-muted-foreground">No reviews written yet.</p>
+                  {isOwnProfile && <Link href="/" className="text-sm text-violet-500 hover:underline">Find games to review</Link>}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="bg-card border border-border rounded-xl p-5 hover:border-violet-500/30 transition-all flex flex-col h-full">
+                      <div className="flex justify-between items-start mb-3">
+                        <Link href={`/game/${r.gameSlug}`} className="font-bold text-lg text-foreground hover:text-violet-500 transition-colors line-clamp-1">
+                          {r.gameName}
+                        </Link>
+                        <div className="flex items-center gap-1 bg-yellow-500/10 px-2 py-1 rounded-lg border border-yellow-500/20 shrink-0">
+                          <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                          <span className="text-sm font-bold text-yellow-500">{r.rating}</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-foreground/80 line-clamp-4 flex-1">{r.text}</p>
+                      <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-xs text-muted-foreground">
+                        <span>{r.createdAt ? new Date(r.createdAt.toMillis()).toLocaleDateString() : 'Recently'}</span>
+                        {r.likes > 0 && <span>{r.likes} likes</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             )}
 
             {/* COLLECTIONS */}
