@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { Star, Loader2, Send } from "lucide-react";
+import { collection, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
+import { Star, Loader2, Send, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ReviewFormProps {
@@ -19,6 +19,7 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const user = auth.currentUser;
 
@@ -39,8 +40,30 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
 
     setIsSubmitting(true);
     setError("");
+    setSuccessMsg("");
 
     try {
+      // 1. Check if user is banned
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists() && userSnap.data()?.isBanned) {
+        setError("Your account is currently restricted from leaving reviews.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Simple Profanity Filter Check
+      const badWords = ["fuck", "shit", "bitch", "asshole", "cunt", "nigger", "faggot", "dick", "pussy", "whore", "slut", "kys", "kill yourself"];
+      const lowerText = reviewText.toLowerCase();
+      let status = "published";
+      
+      for (const word of badWords) {
+        if (lowerText.includes(word)) {
+          status = "pending";
+          break;
+        }
+      }
+
       await addDoc(collection(db, "reviews"), {
         gameId,
         gameName,
@@ -51,14 +74,19 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
         rating,
         text: reviewText.trim(),
         likes: 0,
+        status, // "published" or "pending"
         createdAt: serverTimestamp(),
       });
 
       setRating(0);
       setReviewText("");
-      if (onReviewSubmitted) {
-        onReviewSubmitted();
+      
+      if (status === "pending") {
+         setSuccessMsg("Review submitted! It is currently pending moderation review.");
+      } else {
+         if (onReviewSubmitted) onReviewSubmitted();
       }
+      
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || "Failed to submit review.");
@@ -89,8 +117,15 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
       </h3>
       
       {error && (
-        <div className="p-3 mb-4 text-sm bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl">
+        <div className="p-3 mb-4 text-sm bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 shrink-0" />
           {error}
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="p-3 mb-4 text-sm bg-yellow-500/10 text-yellow-500 font-medium border border-yellow-500/20 rounded-xl">
+          {successMsg}
         </div>
       )}
 

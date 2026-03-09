@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { isAdmin } from "@/lib/admin";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Loader2, ShieldAlert, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -79,7 +79,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/announcements" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-muted-foreground hover:text-foreground font-medium transition-colors">
             Announcements
           </Link>
+          <Link href="/admin/curations" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-yellow-500/80 hover:text-yellow-500 font-bold transition-colors">
+            Curation Engine
+          </Link>
+          <Link href="/admin/seo" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-blue-500/80 hover:text-blue-500 font-bold transition-colors">
+            Global SEO
+          </Link>
+          <Link href="/admin/reports" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-red-500/80 hover:text-red-500 font-bold transition-colors">
+            User Reports
+          </Link>
+          <Link href="/admin/logs" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-muted-foreground hover:text-foreground font-medium transition-colors">
+            Audit Logs
+          </Link>
         </nav>
+        
+        {/* Return to KURA Bottom Button */}
+        <div className="p-4 border-t border-border">
+          <Link href="/">
+            <Button variant="ghost" className="w-full flex items-center justify-start gap-3 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              Return to KURA
+            </Button>
+          </Link>
+        </div>
       </aside>
 
       {/* Main Admin Content Area */}
