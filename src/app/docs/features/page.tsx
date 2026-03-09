@@ -28,8 +28,8 @@ const FEATURES = [
   },
   {
     icon: <Users className="w-5 h-5 text-green-500" />,
-    title: "Social & Following",
-    desc: "Follow other gamers to see their libraries, collections, and reviews. Build a network of trusted game recommendations.",
+    title: "Social & Timeline",
+    desc: "Follow other gamers to see their libraries, collections, and reviews. View a real-time Social Activity Feed (Timeline) on your homepage showing what your friends are playing and reviewing.",
     link: "/following",
   },
   {

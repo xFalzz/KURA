@@ -5,6 +5,7 @@ import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { Star, Loader2, Send, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logActivity } from "@/lib/activityLogger";
 
 interface ReviewFormProps {
   gameId: string;
@@ -76,6 +77,20 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
         likes: 0,
         status, // "published" or "pending"
         createdAt: serverTimestamp(),
+      });
+
+      // Log the action to the social feed
+      await logActivity({
+        userId: user.uid,
+        userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
+        userImage: user.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${user.uid}`,
+        type: "REVIEW_GAME",
+        gameId,
+        gameName,
+        gameSlug,
+        gameImage: "", // Will be fetched/fallback in feed if needed, or we can pass it down as prop
+        rating,
+        reviewText: reviewText.trim(),
       });
 
       setRating(0);

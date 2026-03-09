@@ -6,6 +6,7 @@ import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
+import { logActivity } from "@/lib/activityLogger";
 
 export default function AddToWishlistButton({ game }: { game: Game }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +63,18 @@ export default function AddToWishlistButton({ game }: { game: Game }) {
           },
           addedAt: new Date().toISOString(),
         });
+
+        await logActivity({
+          userId: user.uid,
+          userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
+          userImage: user.photoURL || `https://api.dicebear.com/7.x/identicon/svg?seed=${user.uid}`,
+          type: "WISHLIST_ADD",
+          gameId: game.id,
+          gameName: game.name,
+          gameSlug: game.slug,
+          gameImage: game.background_image || "",
+        });
+
         setIsSaved(true);
         setDocId(ref.id);
       }

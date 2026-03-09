@@ -43,6 +43,10 @@ const FAQS = [
     a: "KURA relies on the RAWG database. If a game was recently released or is very obscure, it may not be in our index yet. RAWG updates its database continuously.",
   },
   {
+    q: "How do I report an inappropriate review?",
+    a: "Click the flag icon next to any review to submit a report. Our moderation team will review the content and take appropriate action.",
+  },
+  {
     q: "How do I report a bug or request a feature?",
     a: "Use the Feedback option in your account dropdown menu, or reach out via email. We actively review all feedback to improve KURA.",
   },

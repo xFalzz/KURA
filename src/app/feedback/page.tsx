@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { MessageSquare, Bug, Lightbulb, Star, Send, CheckCircle, ChevronDown } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 type FeedbackType = "general" | "bug" | "feature" | "review";
 
@@ -47,10 +49,26 @@ export default function FeedbackPage() {
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
+    
     setSubmitting(true);
-    await new Promise((res) => setTimeout(res, 1200));
-    setSubmitted(true);
-    setSubmitting(false);
+    try {
+      await addDoc(collection(db, "feedback"), {
+        type,
+        category,
+        title,
+        message,
+        rating: type === "review" ? rating : null,
+        email: email || "Anonymous",
+        createdAt: serverTimestamp(),
+        status: "new"
+      });
+      setSubmitted(true);
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      alert("Failed to send feedback. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputCls = "w-full bg-black/5 dark:bg-white/5 border border-transparent hover:bg-black/8 dark:hover:bg-white/8 focus:bg-background focus:border-border rounded-xl px-4 py-3 text-sm text-foreground transition-all outline-none focus:ring-2 focus:ring-violet-500/30 placeholder:text-muted-foreground";
