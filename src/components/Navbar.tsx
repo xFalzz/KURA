@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Gamepad2, Bell, Plus, LayoutGrid, Sun, Moon, Settings, LogOut, Map, Trophy, Menu, X, BookOpen, FolderOpen, AlertCircle, MessageSquare, Star, ChevronLeft } from "lucide-react";
+import { Search, Gamepad2, Bell, Plus, LayoutGrid, Sun, Moon, Settings, LogOut, Map, Trophy, Menu, X, BookOpen, FolderOpen, AlertCircle, MessageSquare, Star, ChevronLeft, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { auth } from "@/lib/firebase";
@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Game } from "@/lib/types";
 import { useTheme } from "next-themes";
 import Sidebar from "./Sidebar";
+import { isAdmin } from "@/lib/admin";
 
 export default function Navbar() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -370,6 +371,14 @@ export default function Navbar() {
                           <Trophy className="w-4 h-4 text-muted-foreground" />
                           Leaderboard
                         </Link>
+                        
+                        {isAdmin() && (
+                          <Link href="/admin" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-violet-500 hover:bg-violet-500/10 transition-colors font-medium">
+                            <ShieldAlert className="w-4 h-4 text-violet-500" />
+                            Admin Panel
+                          </Link>
+                        )}
+
                         <Link href="/sitemap/a" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                           <Map className="w-4 h-4 text-muted-foreground" />
                           Sitemap
