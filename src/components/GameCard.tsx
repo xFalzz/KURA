@@ -4,10 +4,9 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Monitor, Gamepad2, Smartphone, Apple, Grid2X2, MoreHorizontal, Gift } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
-import AddToLibraryDropdown from "@/components/AddToLibraryDropdown";
+import AddToWishlistButton from "@/components/AddToWishlistButton";
 
 const getPlatformIcon = (slug: string) => {
   const cls = "w-3.5 h-3.5 text-muted-foreground";
@@ -39,6 +38,7 @@ export interface GameCardProps {
 export default function GameCard({ game }: GameCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const router = useRouter();
   
   return (
@@ -50,13 +50,19 @@ export default function GameCard({ game }: GameCardProps) {
     >
       {/* Actual card - stays in normal flow, expands downward */}
       <div
-        className={`bg-card rounded-xl cursor-pointer border transition-all duration-200 ${
+        className={`bg-card rounded-xl border transition-all duration-200 ${
           isHovered
             ? "shadow-2xl border-white/10 ring-1 ring-border"
             : "border-transparent"
         }`}
       >
-        <Link href={`/game/${game.slug}`} className="block relative">
+        <div 
+          onClick={(e) => {
+             if ((e.target as HTMLElement).closest('button, a')) return;
+             router.push(`/game/${game.slug}`);
+          }} 
+          className="block relative cursor-pointer"
+        >
           {/* Game Cover Area */}
           <div className="relative w-full aspect-16/10 bg-muted overflow-hidden rounded-t-xl">
             {game.background_image && !imgError ? (
@@ -105,7 +111,7 @@ export default function GameCard({ game }: GameCardProps) {
             <div className="flex items-center gap-1 relative z-50">
               {/* Z-index bump so the dropdown escapes the card properly when open */}
               <div>
-                <AddToLibraryDropdown game={game as Parameters<typeof AddToLibraryDropdown>[0]["game"]} variant="card" />
+                <AddToWishlistButton game={game as Parameters<typeof AddToWishlistButton>[0]["game"]} variant="card" />
               </div>
               
               {isHovered && (
@@ -113,6 +119,7 @@ export default function GameCard({ game }: GameCardProps) {
                   <button 
                     onClick={(e) => { 
                       e.preventDefault(); 
+                      e.stopPropagation();
                       if (navigator.share) {
                         navigator.share({ title: `Gift ${game.name}`, text: `Check out ${game.name} on KURA!`, url: `${window.location.origin}/game/${game.slug}` }).catch(() => {});
                       } else {
@@ -125,17 +132,44 @@ export default function GameCard({ game }: GameCardProps) {
                   >
                     <Gift className="w-3.5 h-3.5" />
                   </button>
-                  <button 
-                    onClick={(e) => { 
-                      e.preventDefault(); 
-                      e.stopPropagation();
-                      router.push(`/game/${game.slug}`); 
-                    }}
-                    className="flex items-center justify-center w-6 h-6 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-foreground transition-colors" 
-                    title="More options"
-                  >
-                    <MoreHorizontal className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={(e) => { 
+                        e.preventDefault(); 
+                        e.stopPropagation();
+                        setIsOptionsOpen(!isOptionsOpen); 
+                      }}
+                      className="flex items-center justify-center w-6 h-6 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-foreground transition-colors" 
+                      title="More options"
+                    >
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </button>
+                    <AnimatePresence>
+                      {isOptionsOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute z-100 bottom-full mb-2 right-0 w-48 bg-card dark:bg-zinc-900 border border-border shadow-2xl rounded-xl p-1.5 backdrop-blur-md"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        >
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(`/game/${game.slug}`); setIsOptionsOpen(false); }}
+                            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors text-left"
+                          >
+                            View Details
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(`/game/${game.slug}#reviews`); setIsOptionsOpen(false); }}
+                            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors text-left"
+                          >
+                            Write a Review
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </>
               )}
 
@@ -206,7 +240,7 @@ export default function GameCard({ game }: GameCardProps) {
               )}
             </AnimatePresence>
           </div>
-        </Link>
+        </div>
       </div>
     </div>
   );
