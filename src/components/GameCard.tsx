@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Monitor, Gamepad2, Smartphone, Apple, Grid2X2, Plus, Gift, MoreHorizontal } from "lucide-react";
+import { Star, Monitor, Gamepad2, Smartphone, Apple, Grid2X2, MoreHorizontal, Gift } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
+import AddToLibraryDropdown from "@/components/AddToLibraryDropdown";
 
 const getPlatformIcon = (slug: string) => {
   const cls = "w-3.5 h-3.5 text-muted-foreground";
@@ -37,6 +39,7 @@ export interface GameCardProps {
 export default function GameCard({ game }: GameCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const router = useRouter();
   
   return (
     <div
@@ -47,15 +50,15 @@ export default function GameCard({ game }: GameCardProps) {
     >
       {/* Actual card - stays in normal flow, expands downward */}
       <div
-        className={`bg-card rounded-xl overflow-hidden cursor-pointer border transition-all duration-200 ${
+        className={`bg-card rounded-xl cursor-pointer border transition-all duration-200 ${
           isHovered
             ? "shadow-2xl border-white/10 ring-1 ring-border"
             : "border-transparent"
         }`}
       >
-        <Link href={`/game/${game.slug}`} className="block">
+        <Link href={`/game/${game.slug}`} className="block relative">
           {/* Game Cover Area */}
-          <div className="relative w-full aspect-16/10 bg-muted overflow-hidden">
+          <div className="relative w-full aspect-16/10 bg-muted overflow-hidden rounded-t-xl">
             {game.background_image && !imgError ? (
               <Image
                 src={game.background_image}
@@ -99,22 +102,38 @@ export default function GameCard({ game }: GameCardProps) {
             </h3>
 
             {/* Always visible quick info */}
-            <div className="flex items-center gap-1">
-              <button 
-                onClick={(e) => { e.preventDefault(); }}
-                className="flex items-center gap-1 text-[11px] font-medium text-foreground px-2 py-0.5 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
-                title="Add to library"
-              >
-                <Plus className="w-3 h-3" />
-                {game.added?.toLocaleString() || 0}
-              </button>
+            <div className="flex items-center gap-1 relative z-50">
+              {/* Z-index bump so the dropdown escapes the card properly when open */}
+              <div>
+                <AddToLibraryDropdown game={game as Parameters<typeof AddToLibraryDropdown>[0]["game"]} variant="card" />
+              </div>
               
               {isHovered && (
                 <>
-                  <button className="flex items-center justify-center w-6 h-6 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-foreground transition-colors" title="Gift to a friend">
+                  <button 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      if (navigator.share) {
+                        navigator.share({ title: `Gift ${game.name}`, text: `Check out ${game.name} on KURA!`, url: `${window.location.origin}/game/${game.slug}` }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(`${window.location.origin}/game/${game.slug}`);
+                        alert(`Link copied! Gift feature coming soon.`);
+                      }
+                    }}
+                    className="flex items-center justify-center w-6 h-6 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-foreground transition-colors" 
+                    title="Gift to a friend"
+                  >
                     <Gift className="w-3.5 h-3.5" />
                   </button>
-                  <button className="flex items-center justify-center w-6 h-6 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-foreground transition-colors" title="More options">
+                  <button 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      e.stopPropagation();
+                      router.push(`/game/${game.slug}`); 
+                    }}
+                    className="flex items-center justify-center w-6 h-6 rounded bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 text-foreground transition-colors" 
+                    title="More options"
+                  >
                     <MoreHorizontal className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -161,14 +180,22 @@ export default function GameCard({ game }: GameCardProps) {
 
                     <div className="flex flex-col gap-1.5 mt-2">
                       <button 
-                        onClick={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(`/search?q=${game.genres?.[0]?.name || ''}`);
+                        }}
                         className="w-full bg-secondary hover:bg-foreground hover:text-background text-foreground text-xs font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-between px-4"
                       >
                         Show more like this
                         <span className="text-lg leading-none mt-[-2px]">›</span>
                       </button>
                       <button 
-                         onClick={(e) => e.preventDefault()}
+                         onClick={(e) => {
+                           e.preventDefault();
+                           e.stopPropagation();
+                           (e.currentTarget.closest('[style*="isolation"]') as HTMLElement).style.display = 'none';
+                         }}
                          className="w-full text-muted-foreground hover:text-foreground text-xs font-medium py-2 rounded-lg transition-colors text-center"
                       >
                         Hide this game

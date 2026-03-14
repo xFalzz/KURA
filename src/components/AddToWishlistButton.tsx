@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Heart, Loader2, Check } from "lucide-react";
+import { Heart, Loader2, Check, Plus } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
 import { logActivity } from "@/lib/activityLogger";
 
-export default function AddToWishlistButton({ game }: { game: Game }) {
+export default function AddToWishlistButton({ game, variant = "full" }: { game: Game, variant?: "full" | "card" }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [docId, setDocId] = useState<string | null>(null);
@@ -87,22 +87,33 @@ export default function AddToWishlistButton({ game }: { game: Game }) {
 
   return (
     <button
-      onClick={handleToggle}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggle(); }}
       disabled={isLoading}
-      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-        isSaved
-          ? "bg-violet-600/20 text-violet-300 border border-violet-500/30 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30"
-          : "bg-violet-600 hover:bg-violet-500 text-primary-foreground shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-      }`}
+      className={
+        variant === "full"
+          ? `flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              isSaved
+                ? "bg-violet-600/20 text-violet-300 border border-violet-500/30 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30"
+                : "bg-violet-600 hover:bg-violet-500 text-primary-foreground shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+            }`
+          : `flex items-center gap-1 text-[11px] font-medium text-foreground px-2 py-0.5 rounded transition-colors z-50 relative ${
+              isSaved
+                ? "bg-violet-500/20 text-violet-500 hover:bg-red-500/20 hover:text-red-500"
+                : "bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20"
+            }`
+      }
+      title={isSaved ? "Remove from wishlist" : "Add to wishlist"}
     >
       {isLoading ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Loader2 className={`${variant === "full" ? "w-4 h-4" : "w-3 h-3"} animate-spin`} />
       ) : isSaved ? (
-        <Check className="w-4 h-4" />
-      ) : (
+        <Check className={`${variant === "full" ? "w-4 h-4" : "w-3 h-3"}`} />
+      ) : variant === "full" ? (
         <Heart className="w-4 h-4" />
+      ) : (
+        <Plus className="w-3 h-3" />
       )}
-      {isSaved ? "In Wishlist" : "Add to Wishlist"}
+      {variant === "full" ? (isSaved ? "In Wishlist" : "Add to Wishlist") : (game.added?.toLocaleString() || 0)}
     </button>
   );
 }
