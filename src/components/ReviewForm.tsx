@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp, getDoc, doc } from "firebase/fires
 import { Star, Loader2, Send, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logActivity } from "@/lib/activityLogger";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 interface ReviewFormProps {
   gameId: string;
@@ -21,6 +22,10 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const { config } = usePlatformConfig();
+
+  const minLength = config.content.minReviewLength || 10;
+  const maxLength = config.content.maxReviewLength || 2000;
 
   const user = auth.currentUser;
 
@@ -34,8 +39,8 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
       setError("Please select a rating.");
       return;
     }
-    if (reviewText.trim().length < 10) {
-      setError("Review must be at least 10 characters long.");
+    if (reviewText.trim().length < minLength) {
+      setError(`Review must be at least ${minLength} characters long.`);
       return;
     }
 
@@ -175,19 +180,19 @@ export default function ReviewForm({ gameId, gameName, gameSlug, onReviewSubmitt
           <textarea
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
-            placeholder="What did you think about this game? (min. 10 characters)"
+            placeholder={`What did you think about this game? (min. ${minLength} characters)`}
             className="w-full h-32 p-4 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-y"
-            maxLength={1000}
+            maxLength={maxLength}
           />
           <div className="absolute bottom-3 right-3 text-xs text-muted-foreground pointer-events-none">
-            {reviewText.length}/1000
+            {reviewText.length}/{maxLength}
           </div>
         </div>
 
         <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={isSubmitting || rating === 0 || reviewText.trim().length < 10}
+            disabled={isSubmitting || rating === 0 || reviewText.trim().length < minLength}
             className="bg-violet-600 hover:bg-violet-700 text-white gap-2 px-6 rounded-xl"
           >
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

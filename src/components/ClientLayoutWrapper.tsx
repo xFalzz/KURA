@@ -9,7 +9,14 @@ import GlobalBanner from "@/components/GlobalBanner";
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
-  if (pathname?.startsWith("/admin")) {
+  const isStandalonePage = 
+    pathname?.startsWith("/admin") || 
+    pathname?.startsWith("/docs") || 
+    pathname?.startsWith("/login") || 
+    pathname?.startsWith("/register") || 
+    pathname?.startsWith("/feedback");
+
+  if (isStandalonePage) {
     return <>{children}</>;
   }
 

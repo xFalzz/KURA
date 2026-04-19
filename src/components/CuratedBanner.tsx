@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { Sparkles, Star } from "lucide-react";
 import Image from "next/image";
@@ -53,13 +54,28 @@ export default function CuratedBanner() {
              setGames(validGames);
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        // Silently ignore permission errors (e.g. Firestore rules blocking this read)
+        const err = error as { code?: string; message?: string };
+        if (err.code === "permission-denied" || err.message?.includes("Missing or insufficient permissions")) {
+          return;
+        }
         console.error("Error fetching curation banner data:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchCuration();
+
+    // Wait for auth state to resolve before attempting Firestore reads
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchCuration();
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   if (loading) return null; // Don't show loading state to avoid layout shift, just mount silently

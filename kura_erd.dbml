@@ -1,0 +1,569 @@
+// =============================================================
+// KURA - Game Discovery Platform | Complete ERD (DBML)
+// Compatible with dbdiagram.io
+// =============================================================
+// Total: 27 Tables (13 Firebase + 14 RAWG API)
+// All data models extracted from full codebase analysis
+// =============================================================
+
+Project KURA {
+  database_type: 'Firestore + RAWG API'
+  Note: '''
+    # KURA - Game Discovery Platform ERD
+    Next.js 14 + Firebase + RAWG.io API
+
+    **Firebase Firestore** - 13 collections (user-generated data)
+    **RAWG API** - 14 tables (external game catalog)
+  '''
+}
+
+// =============================================================
+// FIREBASE FIRESTORE COLLECTIONS
+// =============================================================
+
+// --- GROUP: User & Social ---
+
+TableGroup UserAndSocial {
+  users
+  follows
+}
+
+Table users {
+  uid varchar [pk, note: 'Firebase Auth UID, used as document ID']
+  name varchar [note: 'Set during registration']
+  email varchar [not null, note: 'From Firebase Auth or Google OAuth']
+  displayName varchar [note: 'Editable display name from updateProfile()']
+  photoURL varchar [note: 'Avatar URL stored in Firebase Storage (avatars/{uid})']
+  bio text [note: 'User bio, edited in Settings page']
+  isBanned boolean [default: false, note: 'Toggled by admin to restrict reviews']
+  gamingProfiles_steam varchar [note: 'Steam username']
+  gamingProfiles_psn varchar [note: 'PlayStation Network ID']
+  gamingProfiles_xbox varchar [note: 'Xbox Gamertag']
+  gamingProfiles_epicgames varchar [note: 'Epic Games username']
+  gamingProfiles_gog varchar [note: 'GOG username']
+  gamingProfiles_battlenet varchar [note: 'Battle.net tag']
+  gamingProfiles_nintendo varchar [note: 'Nintendo Switch Friend Code']
+  notifications_newReleases boolean [default: true]
+  notifications_recommendations boolean [default: true]
+  notifications_communityActivity boolean [default: false]
+  notifications_marketing boolean [default: false]
+  createdAt varchar [note: 'ISO 8601 - set on registration']
+  lastLogin varchar [note: 'ISO 8601 - updated on Google OAuth login']
+  updatedAt varchar [note: 'ISO 8601 - updated on profile/settings save']
+
+  Note: '''
+    Core user profile. Created on register (email or Google OAuth).
+    Document path: users/{uid}
+    Referenced by: reviews, reports, activities, audit_logs, library, wishlists, collections, follows, gameRatings
+  '''
+}
+
+Table follows {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  followerId varchar [not null, ref: > users.uid, note: 'UID of the user who follows']
+  followingId varchar [not null, ref: > users.uid, note: 'UID of the user being followed']
+  displayName varchar [note: 'Denormalized: followed user display name']
+  email varchar [note: 'Denormalized: followed user email']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    Self-referencing many-to-many follow relationship.
+    Document path: follows/{id}
+    Queried by: followerId (following list) and followingId (followers list)
+  '''
+}
+
+// --- GROUP: Library & Wishlist ---
+
+TableGroup LibraryAndWishlist {
+  library
+  wishlists
+}
+
+Table library {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  userId varchar [not null, ref: > users.uid, note: 'Owner of this library entry']
+  status varchar [not null, note: 'playing | beaten | dropped | plan']
+  game_id int [not null, ref: > games.id, note: 'Nested: game.id (RAWG Game ID)']
+  game_name varchar [not null, note: 'Nested: game.name']
+  game_slug varchar [not null, note: 'Nested: game.slug']
+  game_background_image varchar [note: 'Nested: game.background_image']
+  game_rating float [note: 'Nested: game.rating (0-5)']
+  game_metacritic int [note: 'Nested: game.metacritic']
+  addedAt varchar [note: 'ISO 8601']
+
+  indexes {
+    (userId, game_id) [name: 'idx_user_game', note: 'Composite query: userId + game.id']
+  }
+
+  Note: '''
+    User game library tracking play status.
+    Document path: library/{id}
+    Statuses: playing, beaten, dropped, plan
+  '''
+}
+
+Table wishlists {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  userId varchar [not null, ref: > users.uid, note: 'Owner of this wishlist entry']
+  game_id int [not null, ref: > games.id, note: 'Nested: game.id (RAWG Game ID)']
+  game_name varchar [not null, note: 'Nested: game.name']
+  game_slug varchar [not null, note: 'Nested: game.slug']
+  game_background_image varchar [note: 'Nested: game.background_image']
+  game_metacritic int [note: 'Nested: game.metacritic']
+  game_rating float [note: 'Nested: game.rating']
+  game_genres json [note: 'Nested: game.genres - Array of Genre objects']
+  game_parent_platforms json [note: 'Nested: game.parent_platforms - Array of Platform wrapper objects']
+  game_released varchar [note: 'Nested: game.released']
+  game_playtime int [note: 'Nested: game.playtime (hours)']
+  addedAt varchar [note: 'ISO 8601']
+
+  indexes {
+    (userId, game_id) [name: 'idx_user_game', note: 'Composite query: userId + game.id']
+  }
+
+  Note: '''
+    User wishlist entries with full denormalized game data.
+    Document path: wishlists/{id}
+  '''
+}
+
+// --- GROUP: Collections ---
+
+TableGroup Collections {
+  collections
+  collection_games
+}
+
+Table collections {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  userId varchar [not null, ref: > users.uid, note: 'Collection owner']
+  name varchar [not null, note: 'Collection title']
+  description text [note: 'Optional description']
+  gamesCount int [default: 0, note: 'Denormalized count, updated atomically via runTransaction()']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    User-created themed game collections.
+    Document path: collections/{id}
+    Has subcollection: collections/{id}/games
+  '''
+}
+
+Table collection_games {
+  id varchar [pk, note: 'Document ID = RAWG game ID as string']
+  collection_id varchar [not null, ref: > collections.id, note: 'Parent collection document ID']
+  game_id int [not null, ref: > games.id, note: 'RAWG Game ID (same as document ID)']
+  name varchar [not null]
+  slug varchar [not null]
+  background_image varchar
+  rating float [note: 'RAWG rating (0-5)']
+  metacritic int
+  addedAt varchar [note: 'ISO 8601']
+
+  Note: '''
+    Games within a collection (Firestore subcollection).
+    Document path: collections/{collectionId}/games/{gameId}
+    Added/removed via runTransaction() to sync gamesCount
+  '''
+}
+
+// --- GROUP: Reviews & Moderation ---
+
+TableGroup ReviewsAndModeration {
+  reviews
+  reports
+  gameRatings
+}
+
+Table reviews {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  gameId int [not null, ref: > games.id, note: 'RAWG Game ID']
+  gameName varchar [not null]
+  gameSlug varchar [not null]
+  userId varchar [not null, ref: > users.uid, note: 'Review author']
+  userName varchar [not null, note: 'Denormalized from auth']
+  userPhoto varchar [note: 'Denormalized avatar URL, nullable']
+  rating int [not null, note: '1 to 5 star scale']
+  text text [not null, note: 'Review body (min 10, max 1000 chars)']
+  likes int [default: 0, note: 'Incremented via Firestore increment()']
+  status varchar [default: 'published', note: 'published | pending (auto-flagged by profanity filter)']
+  isFeatured boolean [default: false, note: 'Admin-set KURA Choice badge']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    Community game reviews with content moderation.
+    Document path: reviews/{id}
+    Status set to "pending" if profanity detected, otherwise "published".
+    Admin can toggle isFeatured and change status.
+  '''
+}
+
+Table reports {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  reviewId varchar [not null, ref: > reviews.id, note: 'The flagged review']
+  gameId int [not null, ref: > games.id, note: 'Game the reported review belongs to']
+  reporterUid varchar [not null, ref: > users.uid, note: 'User who submitted the report']
+  reporterName varchar [not null]
+  reason text [not null, note: 'User-provided report reason']
+  status varchar [default: 'pending', note: 'pending | dismissed | resolved_deleted']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    Community-flagged review reports for admin moderation.
+    Document path: reports/{id}
+    Admin can dismiss or delete the associated review.
+  '''
+}
+
+Table gameRatings {
+  id varchar [pk, note: 'Composite document ID: {userId}_{gameId}']
+  userId varchar [not null, ref: > users.uid, note: 'User who rated']
+  gameId int [not null, ref: > games.id, note: 'RAWG Game ID']
+  gameName varchar [not null]
+  gameSlug varchar [not null]
+  rating int [not null, note: '1 to 5 scale (Exceptional to Avoid)']
+  emoji varchar [not null, note: 'Rating emoji visual']
+  label varchar [not null, note: 'Exceptional | Recommended | Meh | Skip it | Avoid']
+  ratedAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    Quick game ratings from the Rate Top Games feature.
+    Document path: gameRatings/{userId}_{gameId}
+    Uses composite document ID to prevent duplicate ratings per user per game.
+  '''
+}
+
+// --- GROUP: Activity Feed & Audit ---
+
+TableGroup ActivityAndAudit {
+  activities
+  audit_logs
+}
+
+Table activities {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  userId varchar [not null, ref: > users.uid]
+  userName varchar [not null]
+  userImage varchar [note: 'Avatar URL or Dicebear fallback']
+  type varchar [not null, note: 'REVIEW_GAME | RATE_GAME | WISHLIST_ADD | LIBRARY_ADD | COLLECTION_ADD']
+  gameId int [not null, ref: > games.id, note: 'RAWG Game ID']
+  gameName varchar [not null]
+  gameSlug varchar [not null]
+  gameImage varchar [note: 'Game cover image URL']
+  rating int [note: 'Only for type REVIEW_GAME or RATE_GAME']
+  reviewText text [note: 'Only for type REVIEW_GAME']
+  libraryStatus varchar [note: 'Only for type LIBRARY_ADD: playing | beaten | dropped | plan']
+  collectionName varchar [note: 'Only for type COLLECTION_ADD']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    Social activity feed events.
+    Document path: activities/{id}
+    Logged automatically when user performs key actions.
+    Queried by followed users to build social feed.
+  '''
+}
+
+Table audit_logs {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  action varchar [not null, note: 'BANNED_USER | UNBANNED_USER | POSTED_ANNOUNCEMENT | DISABLED_ANNOUNCEMENT | PUBLISHED_CURATION | DISABLED_CURATION | UPDATED_SEO | DISMISSED_REPORT | DELETED_REPORTED_REVIEW']
+  adminUid varchar [not null, ref: > users.uid, note: 'Admin who performed the action']
+  adminEmail varchar [not null]
+  targetId varchar [not null, note: 'Affected resource document ID']
+  details text [not null, note: 'Human-readable description of the action']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    Immutable admin action audit trail.
+    Document path: audit_logs/{id}
+    Never deleted. Silent fail on write error to avoid blocking primary action.
+  '''
+}
+
+// --- GROUP: Feedback & Settings ---
+
+TableGroup FeedbackAndSettings {
+  feedback
+  settings_global
+  settings_curation
+  settings_seo
+}
+
+Table feedback {
+  id varchar [pk, note: 'Firestore auto-generated document ID']
+  type varchar [not null, note: 'general | bug | feature | review']
+  category varchar [note: 'Search & Discovery | Library & Wishlist | Collections | Reviews | Profile & Social | Notifications | UI / Design | Performance | Authentication | API / Data | Other']
+  title varchar [not null]
+  message text [not null, note: 'Min 10 characters']
+  rating int [note: 'Only for type review (1-5 emoji scale)']
+  email varchar [default: 'Anonymous', note: 'Optional contact email']
+  status varchar [default: 'new']
+  createdAt timestamp [note: 'serverTimestamp()']
+
+  Note: '''
+    User feedback submissions from the /feedback page.
+    Document path: feedback/{id}
+    Types: general feedback, bug reports, feature requests, platform review.
+  '''
+}
+
+Table settings_global {
+  id varchar [pk, note: 'Fixed document ID: global_config']
+  announcement_message text [note: 'Banner message text']
+  announcement_active boolean [note: 'Show/hide the global banner']
+  announcement_type varchar [note: 'info | warning | success (determines banner color)']
+  announcement_updatedAt timestamp
+
+  Note: '''
+    Global announcement banner config.
+    Document path: settings/global_config
+    Managed via Admin > Announcements panel.
+  '''
+}
+
+Table settings_curation {
+  id varchar [pk, note: 'Fixed document ID: curation_config']
+  curation_title varchar [note: 'Featured banner title']
+  curation_subtitle varchar [note: 'Featured banner subtitle/description']
+  curation_gameIds json [note: 'Array of RAWG Game IDs to feature on homepage']
+  curation_active boolean [note: 'Show/hide curation banner']
+  curation_updatedAt timestamp
+
+  Note: '''
+    Curated game showcase for homepage.
+    Document path: settings/curation_config
+    Managed via Admin > Curation Engine panel.
+  '''
+}
+
+Table settings_seo {
+  id varchar [pk, note: 'Fixed document ID: seo_config']
+  titleTemplate varchar [note: 'Global HTML title tag template']
+  description varchar [note: 'Global meta description (max 160 chars)']
+  keywords varchar [note: 'Comma-separated SEO keywords']
+  updatedAt timestamp
+
+  Note: '''
+    Dynamic SEO metadata configuration.
+    Document path: settings/seo_config
+    Managed via Admin > SEO Manager panel.
+    Read by ClientSEOWrapper component on every page render.
+  '''
+}
+
+// =============================================================
+// RAWG API ENTITIES (External Data Source)
+// =============================================================
+
+// --- GROUP: Game Core ---
+
+TableGroup GameCore {
+  games
+  screenshots
+  ratings
+  esrb_ratings
+}
+
+Table games {
+  id int [pk, note: 'RAWG Game ID']
+  slug varchar [unique, not null, note: 'URL-safe identifier']
+  name varchar [not null]
+  released varchar [note: 'YYYY-MM-DD release date']
+  background_image varchar [note: 'Cover art image URL']
+  metacritic int [note: 'Metacritic aggregate score (0-100)']
+  rating float [note: 'RAWG community rating (0.0 - 5.0)']
+  rating_top int [note: 'Highest rating category value for this game']
+  ratings_count int [note: 'Total number of user ratings']
+  reviews_count int [note: 'Total number of written reviews']
+  added int [note: 'Number of RAWG users who added this game']
+  playtime int [note: 'Average playtime in hours']
+  description text [note: 'HTML-formatted description']
+  description_raw text [note: 'Plain text description']
+  website varchar [note: 'Official game website URL']
+  esrb_rating_id int [ref: > esrb_ratings.id, note: 'Age rating reference']
+
+  Note: '''
+    Central game entity from the RAWG.io REST API.
+    Endpoints: GET /games, GET /games/{id}
+    All game data in KURA flows from this entity.
+  '''
+}
+
+Table screenshots {
+  id int [pk, note: 'RAWG Screenshot ID']
+  game_id int [not null, ref: > games.id]
+  image varchar [not null, note: 'Screenshot image URL']
+  width int
+  height int
+
+  Note: '''
+    In-game screenshots.
+    Endpoint: GET /games/{id}/screenshots
+  '''
+}
+
+Table ratings {
+  id int [pk]
+  game_id int [not null, ref: > games.id]
+  title varchar [not null, note: 'exceptional | recommended | meh | skip']
+  count int [not null, note: 'Number of users in this category']
+  percent float [not null, note: 'Percentage of total ratings']
+
+  Note: '''
+    Rating breakdown distribution (4 categories per game).
+    Returned inline with game detail response.
+  '''
+}
+
+Table esrb_ratings {
+  id int [pk]
+  name varchar [not null, note: 'Everyone | Everyone 10+ | Teen | Mature 17+ | Adults Only | Rating Pending']
+  slug varchar [not null]
+
+  Note: 'ESRB content rating classification.'
+}
+
+// --- GROUP: Game Taxonomy ---
+
+TableGroup GameTaxonomy {
+  genres
+  game_genres
+  platforms
+  game_platforms
+  tags
+  game_tags
+}
+
+Table genres {
+  id int [pk]
+  name varchar [not null]
+  slug varchar [not null]
+  image_background varchar [note: 'Genre header image URL']
+
+  Note: '''
+    Game genre categories (Action, RPG, Strategy, Puzzle, etc.).
+    Endpoint: GET /genres
+  '''
+}
+
+Table game_genres {
+  game_id int [ref: > games.id]
+  genre_id int [ref: > genres.id]
+
+  indexes {
+    (game_id, genre_id) [pk]
+  }
+
+  Note: 'Junction: games <-> genres (many-to-many).'
+}
+
+Table platforms {
+  id int [pk]
+  name varchar [not null]
+  slug varchar [not null]
+
+  Note: '''
+    Gaming platforms (PC, PlayStation 5, Xbox Series S/X, Nintendo Switch, iOS, Android, etc.).
+    Endpoint: GET /platforms/lists/parents
+  '''
+}
+
+Table game_platforms {
+  game_id int [ref: > games.id]
+  platform_id int [ref: > platforms.id]
+
+  indexes {
+    (game_id, platform_id) [pk]
+  }
+
+  Note: 'Junction: games <-> platforms (many-to-many).'
+}
+
+Table tags {
+  id int [pk]
+  name varchar [not null]
+  slug varchar [not null]
+
+  Note: 'Community tags (Singleplayer, Multiplayer, Open World, Co-op, VR, etc.).'
+}
+
+Table game_tags {
+  game_id int [ref: > games.id]
+  tag_id int [ref: > tags.id]
+
+  indexes {
+    (game_id, tag_id) [pk]
+  }
+
+  Note: 'Junction: games <-> tags (many-to-many).'
+}
+
+// --- GROUP: Game Industry ---
+
+TableGroup GameIndustry {
+  developers
+  game_developers
+  publishers
+  game_publishers
+  stores
+  game_stores
+}
+
+Table developers {
+  id int [pk]
+  name varchar [not null]
+  slug varchar [not null]
+
+  Note: 'Game development studios (Rockstar Games, CD Projekt Red, etc.).'
+}
+
+Table game_developers {
+  game_id int [ref: > games.id]
+  developer_id int [ref: > developers.id]
+
+  indexes {
+    (game_id, developer_id) [pk]
+  }
+
+  Note: 'Junction: games <-> developers (many-to-many).'
+}
+
+Table publishers {
+  id int [pk]
+  name varchar [not null]
+  slug varchar [not null]
+
+  Note: 'Game publishers (Electronic Arts, Ubisoft, etc.).'
+}
+
+Table game_publishers {
+  game_id int [ref: > games.id]
+  publisher_id int [ref: > publishers.id]
+
+  indexes {
+    (game_id, publisher_id) [pk]
+  }
+
+  Note: 'Junction: games <-> publishers (many-to-many).'
+}
+
+Table stores {
+  id int [pk]
+  name varchar [not null]
+  slug varchar [not null]
+  domain varchar [note: 'Store website domain (e.g. store.steampowered.com)']
+
+  Note: '''
+    Digital game storefronts.
+    Endpoint: GET /stores
+  '''
+}
+
+Table game_stores {
+  id int [pk, note: 'RAWG store-entry ID']
+  game_id int [not null, ref: > games.id]
+  store_id int [not null, ref: > stores.id]
+
+  Note: 'Junction: games <-> stores (many-to-many).'
+}

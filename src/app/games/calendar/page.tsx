@@ -1,5 +1,10 @@
 import GamesListPage from "@/components/GamesListPage";
+import { Metadata } from "next";
 
+export const metadata: Metadata = {
+  title: "Release Calendar | KURA",
+  description: "Upcoming game releases.",
+};
 export default function ReleaseCalendarPage() {
   const date = new Date();
   const today = date.toISOString().split("T")[0];

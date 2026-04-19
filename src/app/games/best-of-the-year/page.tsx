@@ -1,5 +1,10 @@
 import GamesListPage from "@/components/GamesListPage";
+import { Metadata } from "next";
 
+export const metadata: Metadata = {
+  title: "Best of the Year | KURA",
+  description: "Top rated games this year.",
+};
 export default function BestOfYearPage() {
   const currentYear = new Date().getFullYear();
 

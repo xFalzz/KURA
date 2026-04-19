@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Bug, Lightbulb, Star, Send, CheckCircle, ChevronDown } from "lucide-react";
+import { MessageSquare, Bug, Lightbulb, Star, Send, CheckCircle, ChevronDown, ArrowLeft } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import Link from "next/link";
 
 type FeedbackType = "general" | "bug" | "feature" | "review";
 
@@ -97,6 +98,16 @@ export default function FeedbackPage() {
 
   return (
     <div className="px-4 sm:px-6 py-8 sm:py-10 max-w-2xl mx-auto">
+      {/* Back to Home Button */}
+      <div className="mb-8">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group">
+          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center group-hover:bg-black/10 dark:group-hover:bg-white/10 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </div>
+          Back to Home
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { X, Megaphone } from "lucide-react";
 
@@ -28,11 +29,22 @@ export default function GlobalBanner() {
           }
         }
       } catch (error) {
+        // Silently ignore permission errors (e.g. user not authenticated)
+        if (error instanceof Error && error.message.includes("Missing or insufficient permissions")) {
+          return;
+        }
         console.error("Error fetching announcement:", error);
       }
     };
 
-    fetchAnnouncement();
+    // Wait for auth state to resolve before attempting Firestore reads
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchAnnouncement();
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   const handleClose = () => {
@@ -70,3 +82,4 @@ export default function GlobalBanner() {
     </div>
   );
 }
+

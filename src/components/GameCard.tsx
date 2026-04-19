@@ -38,6 +38,7 @@ export interface GameCardProps {
 export default function GameCard({ game }: GameCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(true);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const router = useRouter();
   
@@ -64,19 +65,23 @@ export default function GameCard({ game }: GameCardProps) {
           className="block relative cursor-pointer"
         >
           {/* Game Cover Area */}
-          <div className="relative w-full aspect-16/10 bg-muted overflow-hidden rounded-t-xl">
+          <div className="relative w-full aspect-16/10 bg-muted overflow-hidden rounded-t-xl group-hover:opacity-100">
+            {isImageLoading && !imgError && game.background_image && (
+              <div className="absolute inset-0 bg-muted animate-pulse z-10" />
+            )}
             {game.background_image && !imgError ? (
               <Image
                 src={game.background_image}
                 alt={game.name}
                 fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className={`object-cover transition-all duration-500 group-hover:scale-105 ${isImageLoading ? 'opacity-0 scale-105' : 'opacity-100 scale-100'}`}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                onError={() => setImgError(true)}
+                onLoad={() => setIsImageLoading(false)}
+                onError={() => { setImgError(true); setIsImageLoading(false); }}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                <Gamepad2 className="w-12 h-12 text-muted-foreground" />
+                <Gamepad2 className="w-12 h-12 text-muted-foreground/30" />
               </div>
             )}
           </div>

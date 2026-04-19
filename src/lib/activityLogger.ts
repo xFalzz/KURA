@@ -1,7 +1,7 @@
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-export type ActivityType = "REVIEW_GAME" | "RATE_GAME" | "WISHLIST_ADD" | "LIBRARY_ADD";
+export type ActivityType = "REVIEW_GAME" | "RATE_GAME" | "WISHLIST_ADD" | "LIBRARY_ADD" | "COLLECTION_ADD";
 
 interface LogActivityParams {
   userId: string;
@@ -15,6 +15,7 @@ interface LogActivityParams {
   rating?: number;
   reviewText?: string;
   libraryStatus?: string;
+  collectionName?: string;
 }
 
 export async function logActivity(params: LogActivityParams) {

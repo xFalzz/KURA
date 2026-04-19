@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { auth, db } from "@/lib/firebase";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Cropper, { Area } from "react-easy-crop";
+import getCroppedImg from "@/lib/cropImage";
+import { auth, db, storage } from "@/lib/firebase";
 import {
   onAuthStateChanged,
   updateProfile,
@@ -11,6 +13,7 @@ import {
   User,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { useRouter } from "next/navigation";
 
 type TabId = "profile" | "gaming" | "notifications" | "password";
@@ -42,6 +45,17 @@ export default function SettingsPage() {
   // Profile tab
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
+  
+  // Cropping states
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [croppedImageBlob, setCroppedImageBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
 
   // Gaming profiles tab
   const [gamingProfiles, setGamingProfiles] = useState<Record<string, string>>({});
@@ -83,16 +97,85 @@ export default function SettingsPage() {
     setTimeout(() => setMsg({ text: "", error: false }), 3500);
   };
 
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showMsg("File size must be less than 5MB", true);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      setImageSrc(reader.result?.toString() || null);
+      setRemoveAvatar(false);
+    });
+    reader.readAsDataURL(file);
+    e.target.value = ""; // reset input
+  };
+
+  const handleCropSave = async () => {
+    try {
+      if (imageSrc && croppedAreaPixels) {
+        const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+        if (croppedBlob) {
+          setCroppedImageBlob(croppedBlob);
+          setPreviewUrl(URL.createObjectURL(croppedBlob));
+          setImageSrc(null); // close modal
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      showMsg("Failed to crop image", true);
+    }
+  };
+
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
+    let photoURL = user.photoURL;
+
     try {
-      await updateProfile(user, { displayName });
+      if (removeAvatar) {
+        setAvatarUploading(true);
+        try {
+          const storageRef = ref(storage, `avatars/${user.uid}`);
+          await deleteObject(storageRef);
+        } catch {
+          // ignore if it doesn't exist
+        }
+        photoURL = null;
+        setAvatarUploading(false);
+      } else if (croppedImageBlob) {
+        setAvatarUploading(true);
+        const storageRef = ref(storage, `avatars/${user.uid}`);
+        await uploadBytes(storageRef, croppedImageBlob);
+        photoURL = await getDownloadURL(storageRef);
+        setAvatarUploading(false);
+      }
+
+      await updateProfile(user, { displayName, photoURL: photoURL || "" });
+      if (photoURL !== user.photoURL || removeAvatar) {
+        setUser({ ...user, photoURL } as User);
+        setCroppedImageBlob(null); // Clear pending upload
+        setRemoveAvatar(false);
+      }
+
       await setDoc(doc(db, "users", user.uid), { bio, updatedAt: new Date().toISOString() }, { merge: true });
       showMsg("Profile saved successfully!");
-    } catch { showMsg("Failed to save profile.", true); }
-    setSaving(false);
+    } catch (error) { 
+      console.error("Profile Save Error:", error);
+      showMsg("Failed to save profile. Check connection or permissions.", true); 
+    } finally {
+      setAvatarUploading(false);
+      setSaving(false);
+    }
   };
 
   const saveGaming = async (e: React.FormEvent) => {
@@ -178,12 +261,52 @@ export default function SettingsPage() {
           <div>
             <p className={labelCls + " mb-3"}>Avatar</p>
             <div className="flex items-center gap-5">
-              <div className="w-20 h-20 rounded-full bg-violet-600 flex items-center justify-center text-2xl font-bold text-white shadow-md">
-                {displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+              <div className="w-20 h-20 rounded-full bg-violet-600 flex items-center justify-center text-2xl font-bold text-white shadow-md overflow-hidden relative shrink-0">
+                {(previewUrl || (user?.photoURL && !removeAvatar)) ? (
+                  <img src={previewUrl || user!.photoURL!} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <>{displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}</>
+                )}
+                {avatarUploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
               <div className="text-xs text-muted-foreground">
                 <p>PNG, JPG or GIF, max 5MB</p>
-                <button type="button" className="mt-1 text-violet-500 hover:underline font-medium">Upload avatar</button>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/gif"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                />
+                <div className="flex gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading || !!imageSrc}
+                    className="text-violet-500 hover:underline font-medium disabled:opacity-50"
+                  >
+                    {croppedImageBlob ? "Change preview" : "Upload avatar"}
+                  </button>
+                  {((user?.photoURL && !removeAvatar) || previewUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemoveAvatar(true);
+                        setPreviewUrl(null);
+                        setCroppedImageBlob(null);
+                        setImageSrc(null);
+                      }}
+                      disabled={avatarUploading || !!imageSrc}
+                      className="text-red-500 hover:underline font-medium disabled:opacity-50"
+                    >
+                      Remove avatar
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -203,7 +326,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button type="submit" disabled={saving} className="bg-foreground text-background hover:bg-foreground/90 px-8 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
+          <button type="submit" disabled={saving || avatarUploading} className="bg-foreground text-background hover:bg-foreground/90 px-8 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50">
             {saving ? "Saving..." : "Save changes"}
           </button>
         </form>
@@ -280,6 +403,50 @@ export default function SettingsPage() {
             {saving ? "Changing..." : "Change password"}
           </button>
         </form>
+      )}
+
+      {/* Crop Modal */}
+      {imageSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-border flex flex-col">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h2 className="text-lg font-bold">Crop Avatar</h2>
+              <button onClick={() => setImageSrc(null)} className="text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
+            </div>
+            <div className="relative w-full h-80 bg-black/50">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div className="p-4 flex items-center gap-4 border-t border-border">
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="flex-1 accent-violet-500"
+              />
+              <button 
+                onClick={handleCropSave} 
+                className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2 rounded-xl font-bold text-sm transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

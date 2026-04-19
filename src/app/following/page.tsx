@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Users, UserMinus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import ActivityFeed from "@/components/ActivityFeed";
 
 interface FollowedUser {
   uid: string;
@@ -59,9 +60,17 @@ export default function FollowingPage() {
       <div className="flex items-center gap-3 mb-8">
         <Users className="w-7 h-7 text-violet-500" />
         <div>
-          <h1 className="text-2xl sm:text-3xl font-outfit font-black text-foreground">People You Follow</h1>
+          <h1 className="text-2xl sm:text-3xl font-outfit font-black text-foreground">Social Hub</h1>
           <p className="text-muted-foreground text-sm">{following.length} people you follow</p>
         </div>
+      </div>
+
+      <div className="mb-12">
+        <ActivityFeed />
+      </div>
+
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-xl font-bold font-outfit text-foreground">Following List</h2>
       </div>
 
       {following.length === 0 ? (

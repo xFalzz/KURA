@@ -4,6 +4,7 @@ import { Star, ChevronLeft, Globe, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import AddToWishlistButton from "@/components/AddToWishlistButton";
 import AddToLibraryDropdown from "@/components/AddToLibraryDropdown";
+import AddToCollectionDropdown from "@/components/AddToCollectionDropdown";
 import RatingsBar from "@/components/RatingsBar";
 import ReviewsSection from "@/components/ReviewsSection";
 import type { Metadata } from "next";
@@ -130,6 +131,7 @@ export default async function GameDetailPage({ params }: Props) {
               {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-3 mb-6 relative z-50">
                 <AddToLibraryDropdown game={game as Parameters<typeof AddToLibraryDropdown>[0]["game"]} variant="full" />
+                <AddToCollectionDropdown game={game as Parameters<typeof AddToCollectionDropdown>[0]["game"]} />
                 <AddToWishlistButton game={game as Parameters<typeof AddToWishlistButton>[0]["game"]} />
                 <a
                   href={game.website || "#"}

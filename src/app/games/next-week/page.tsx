@@ -1,5 +1,10 @@
 import GamesListPage from "@/components/GamesListPage";
+import { Metadata } from "next";
 
+export const metadata: Metadata = {
+  title: "Next Week | KURA",
+  description: "Games releasing next week.",
+};
 export default function NextWeekPage() {
   const date = new Date();
   date.setDate(date.getDate() + 1);

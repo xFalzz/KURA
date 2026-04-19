@@ -15,6 +15,7 @@ import { Game } from "@/lib/types";
 import { useTheme } from "next-themes";
 import Sidebar from "./Sidebar";
 import { isAdmin } from "@/lib/admin";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 export default function Navbar() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -24,11 +25,15 @@ export default function Navbar() {
   const [isPlusOpen, setIsPlusOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const { config } = usePlatformConfig();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
   const searchRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const plusRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
 
   const [activeIndex, setActiveIndex] = useState(-1);
   const debouncedSearch = useDebounce(searchInput, 150);
@@ -249,22 +254,29 @@ export default function Navbar() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="text-zinc-500 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 h-8 w-8"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="text-zinc-500 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 h-8 w-8 relative flex items-center justify-center"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             title="Toggle Theme"
           >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            {mounted && resolvedTheme === "dark" ? (
+              <Moon className="h-4 w-4" />
+            ) : mounted ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <div className="h-4 w-4" />
+            )}
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Rate Top Games — always visible */}
-          <Link href="/rate/thebest">
-            <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 hover:text-yellow-500 hover:bg-yellow-500/10 h-8 px-3 text-sm font-medium transition-colors">
-              <Star className="w-3.5 h-3.5 fill-current" />
-              Rate Games
-            </Button>
-          </Link>
+          {/* Rate Top Games — conditionally visible */}
+          {config.features.rateGames && (
+            <Link href="/rate/thebest">
+              <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 hover:text-yellow-500 hover:bg-yellow-500/10 h-8 px-3 text-sm font-medium transition-colors">
+                <Star className="w-3.5 h-3.5 fill-current" />
+                Rate Games
+              </Button>
+            </Link>
+          )}
 
           {/* Docs — always visible */}
           <Link href="/docs">
@@ -367,10 +379,12 @@ export default function Navbar() {
                           <Settings className="w-4 h-4 text-muted-foreground" />
                           Settings
                         </Link>
-                        <Link href="/leaderboard" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                          <Trophy className="w-4 h-4 text-muted-foreground" />
-                          Leaderboard
-                        </Link>
+                        {config.features.leaderboard && (
+                          <Link href="/leaderboard" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Trophy className="w-4 h-4 text-muted-foreground" />
+                            Leaderboard
+                          </Link>
+                        )}
                         
                         {isAdmin() && (
                           <Link href="/admin" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-violet-500 hover:bg-violet-500/10 transition-colors font-medium">
@@ -383,10 +397,12 @@ export default function Navbar() {
                           <Map className="w-4 h-4 text-muted-foreground" />
                           Sitemap
                         </Link>
-                        <Link href="/feedback" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                          <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                          Feedback
-                        </Link>
+                        {config.features.feedback && (
+                          <Link href="/feedback" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                            Feedback
+                          </Link>
+                        )}
                       </div>
                       
                       <div className="border-t border-border py-1">

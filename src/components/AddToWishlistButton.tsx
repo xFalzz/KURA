@@ -7,12 +7,14 @@ import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from "fireb
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types";
 import { logActivity } from "@/lib/activityLogger";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 export default function AddToWishlistButton({ game, variant = "full" }: { game: Game, variant?: "full" | "card" }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [docId, setDocId] = useState<string | null>(null);
   const router = useRouter();
+  const { config } = usePlatformConfig();
 
   useEffect(() => {
     const checkWishlist = async (uid: string) => {
@@ -84,6 +86,8 @@ export default function AddToWishlistButton({ game, variant = "full" }: { game: 
       setIsLoading(false);
     }
   };
+
+  if (!config.features.wishlist) return null;
 
   return (
     <button

@@ -5,7 +5,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
   collection, query, where, getDocs, doc, getDoc,
-  setDoc, deleteDoc, serverTimestamp
+  setDoc, deleteDoc, serverTimestamp, getCountFromServer
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -22,6 +22,7 @@ interface ProfileUser {
   photoURL?: string;
   bio?: string;
   uid: string;
+  badges?: { reviewer: boolean; curator: boolean };
 }
 
 type TabId = "overview" | "library" | "wishlist" | "reviews" | "collections" | "following" | "followers";
@@ -73,6 +74,28 @@ export default function ProfilePage() {
         photoURL: currentUser.photoURL || data?.photoURL,
         bio: data?.bio || "",
       });
+
+      // Fetch badge counts
+      const reviewQ = query(collection(db, "reviews"), where("userId", "==", currentUser.uid));
+      const colQ = query(collection(db, "collections"), where("userId", "==", currentUser.uid));
+      
+      try {
+        const [reviewSnap, colSnap] = await Promise.all([
+          getCountFromServer(reviewQ),
+          getCountFromServer(colQ)
+        ]);
+        
+        setProfileUser(prev => prev ? {
+          ...prev,
+          badges: {
+            reviewer: reviewSnap.data().count > 0,
+            curator: colSnap.data().count > 0
+          }
+        } : null);
+      } catch (e) {
+        console.error("Error fetching badges", e);
+      }
+
       setLoading(false);
     };
     load();
@@ -178,7 +201,26 @@ export default function ProfilePage() {
           </div>
           {/* Name + Bio */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-outfit font-black text-foreground">{profileUser.displayName}</h1>
+            <h1 className="text-2xl sm:text-3xl font-outfit font-black text-foreground flex items-center gap-2">
+              {profileUser.displayName}
+            </h1>
+            
+            {/* Badges Display */}
+            {profileUser.badges && (profileUser.badges.reviewer || profileUser.badges.curator) && (
+              <div className="flex flex-wrap gap-2 mt-2 mb-1">
+                {profileUser.badges.reviewer && (
+                  <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-lg border border-violet-500/20">
+                    <Star className="w-3 h-3 fill-violet-500" /> Reviewer
+                  </span>
+                )}
+                {profileUser.badges.curator && (
+                  <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                    <FolderOpen className="w-3 h-3 fill-amber-500" /> Curator
+                  </span>
+                )}
+              </div>
+            )}
+
             {profileUser.bio && (
               <p className="text-muted-foreground text-sm mt-1 max-w-xl">{profileUser.bio}</p>
             )}

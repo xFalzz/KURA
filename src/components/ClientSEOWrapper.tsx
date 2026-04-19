@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 /**
@@ -24,8 +25,6 @@ export default function ClientSEOWrapper() {
           const cfg = docSnap.data();
           
           if (cfg.titleTemplate && document) {
-            // Update Title if it isn't specifically overridden by a sub-page
-            // For a simple global approach, we just set the exact template or main title
             document.title = cfg.titleTemplate.replace("%s", "Home");
           }
 
@@ -50,11 +49,23 @@ export default function ClientSEOWrapper() {
           }
         }
       } catch (error) {
+        // Silently ignore permission errors (e.g. user not authenticated)
+        // This is expected when Firestore rules require auth
+        if (error instanceof Error && error.message.includes("Missing or insufficient permissions")) {
+          return;
+        }
         console.error("Failed to fetch client SEO overrides:", error);
       }
     };
-    
-    fetchSEO();
+
+    // Wait for auth state to resolve before attempting Firestore reads
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchSEO();
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   return null; // Renders nothing

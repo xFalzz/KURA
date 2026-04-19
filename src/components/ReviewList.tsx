@@ -56,11 +56,17 @@ export default function ReviewList({ gameId, refreshTrigger = 0 }: ReviewListPro
         .map(d => ({ id: d.id, ...d.data() } as Review))
         .filter(r => r.status === "published" || !r.status); // Fallback for old reviews without status
       
-      // Sort manually: Featured first, then newest
+      // Sort manually: Featured first, then likes, then newest
       items.sort((a, b) => {
         if (a.isFeatured && !b.isFeatured) return -1;
         if (!a.isFeatured && b.isFeatured) return 1;
         
+        // Sort by likes (descending)
+        if (a.likes !== b.likes) {
+          return b.likes - a.likes;
+        }
+
+        // Fallback to newest
         const timeA = a.createdAt?.toMillis() || 0;
         const timeB = b.createdAt?.toMillis() || 0;
         return timeB - timeA;
