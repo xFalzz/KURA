@@ -120,7 +120,7 @@ export default function GuestBanner() {
       </div>
 
       {/* Centre content */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center py-6 sm:py-8 px-4 sm:px-16 lg:px-32">
+      <div className="relative z-10 flex flex-col items-center justify-center text-center py-5 sm:py-8 px-4 sm:px-16 lg:px-32">
         {/* Badge */}
         <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1 mb-4">
           <Gamepad2 className="w-3.5 h-3.5 text-white/80" />
@@ -128,7 +128,7 @@ export default function GuestBanner() {
         </div>
 
         {/* Headline */}
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-outfit font-black text-white mb-2 tracking-tight drop-shadow-lg">
+        <h2 className="text-xl sm:text-3xl md:text-4xl font-outfit font-black text-white mb-2 tracking-tight drop-shadow-lg leading-tight">
           {config.general.tagline || "Discover your next favourite game"}
         </h2>
         <p className="text-white/70 text-xs sm:text-sm mb-4 sm:mb-5 max-w-xs sm:max-w-sm leading-relaxed">
@@ -171,9 +171,9 @@ export default function GuestBanner() {
       <button
         onClick={dismiss}
         aria-label="Dismiss banner"
-        className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 border border-white/20 flex items-center justify-center transition-all duration-150 hover:scale-110"
+        className="absolute top-4 right-4 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/15 hover:bg-white/30 border border-white/20 flex items-center justify-center transition-all duration-150 hover:scale-110"
       >
-        <X className="w-4 h-4 text-white" />
+        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
       </button>
     </div>
   );

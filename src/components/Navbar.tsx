@@ -110,7 +110,7 @@ export default function Navbar() {
   return (
     <>
       <nav className="sticky top-0 z-60 w-full bg-background/95 backdrop-blur-md border-b border-black/10 dark:border-white/10">
-        <div className="flex items-center h-16 px-6 gap-4">
+        <div className="flex items-center h-16 px-4 sm:px-6 gap-2 sm:gap-4">
           {/* Hamburger Menu (Mobile Only) */}
           <button 
             className="lg:hidden text-foreground p-1 -ml-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-md"
@@ -426,13 +426,13 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 h-8 px-4 text-sm">
+              <Link href="/login" className="hidden xs:block">
+                <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 h-8 px-3 text-sm">
                   Login
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="sm" className="bg-violet-600 hover:bg-violet-500 text-white h-8 px-4 text-sm font-medium rounded-lg shadow-none border-0 transition-colors">
+                <Button size="sm" className="bg-violet-600 hover:bg-violet-500 text-white h-8 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-lg shadow-none border-0 transition-colors">
                   Sign Up
                 </Button>
               </Link>

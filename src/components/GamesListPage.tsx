@@ -204,11 +204,11 @@ export default function GamesListPage({ title, subtitle, params = {} }: GamesLis
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
             <OrderDropdown value={ordering} onChange={setOrdering} />
             {data && (
-              <span className="text-sm text-muted-foreground font-medium">
+              <span className="text-xs sm:text-sm text-muted-foreground font-medium hidden xs:inline">
                 {data.pages[0]?.count?.toLocaleString()} games
               </span>
             )}
