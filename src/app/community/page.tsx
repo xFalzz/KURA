@@ -7,21 +7,14 @@ import {
   collection, addDoc, query, orderBy, limit, onSnapshot,
   serverTimestamp, doc, updateDoc, increment, deleteDoc, Timestamp
 } from "firebase/firestore";
-import { MessageCircle, Send, Heart, Trash2, Loader2, Globe, Gamepad2 } from "lucide-react";
+import { MessageCircle, Send, Gamepad2, TrendingUp, Users, Loader2, Globe } from "lucide-react";
 import Link from "next/link";
+import UserBadge from "@/components/UserBadge";
 
-interface Post {
-  id: string;
-  userId: string;
-  userName: string;
-  userPhoto: string | null;
-  text: string;
-  likes: number;
-  likedBy?: string[];
-  createdAt: Timestamp | null;
-}
+import PostItem, { Post } from "@/components/PostItem";
 
 const MAX_CHARS = 280;
+const POSTS_PER_PAGE = 20;
 
 export default function CommunityPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -29,7 +22,9 @@ export default function CommunityPage() {
   const [newPost, setNewPost] = useState("");
   const [posting, setPosting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -37,23 +32,52 @@ export default function CommunityPage() {
     return unsub;
   }, []);
 
-  // Real-time listener for posts
   useEffect(() => {
-    const q = query(
-      collection(db, "posts"),
-      orderBy("createdAt", "desc"),
-      limit(50)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
-      setPosts(items);
-      setLoading(false);
-    }, (error) => {
-      console.error("Posts listener error:", error);
-      setLoading(false);
-    });
-    return unsub;
+    const fetchInitial = async () => {
+      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(POSTS_PER_PAGE));
+      const unsub = onSnapshot(q, (snap) => {
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
+        setPosts(items);
+        if (snap.docs.length > 0) {
+          setLastDoc(snap.docs[snap.docs.length - 1]);
+        }
+        setHasMore(snap.docs.length === POSTS_PER_PAGE);
+        setLoading(false);
+      });
+      return unsub;
+    };
+    
+    let unsubscribe: any;
+    fetchInitial().then(unsub => { unsubscribe = unsub; });
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
+
+  const loadMorePosts = async () => {
+    if (!lastDoc || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      // Need to use getDocs instead of onSnapshot for paginated items to avoid complex state merging
+      const { getDocs, startAfter } = await import("firebase/firestore");
+      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), startAfter(lastDoc), limit(POSTS_PER_PAGE));
+      const snap = await getDocs(q);
+      
+      const newItems = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
+      setPosts(prev => {
+        // filter out duplicates just in case
+        const existingIds = new Set(prev.map(p => p.id));
+        const uniqueNew = newItems.filter(p => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
+      
+      if (snap.docs.length > 0) {
+        setLastDoc(snap.docs[snap.docs.length - 1]);
+      }
+      setHasMore(snap.docs.length === POSTS_PER_PAGE);
+    } catch (error) {
+      console.error("Error loading more posts:", error);
+    }
+    setLoadingMore(false);
+  };
 
   const handlePost = async () => {
     if (!user || !newPost.trim() || newPost.length > MAX_CHARS) return;
@@ -66,6 +90,7 @@ export default function CommunityPage() {
         text: newPost.trim(),
         likes: 0,
         likedBy: [],
+        replyCount: 0,
         createdAt: serverTimestamp(),
       });
       setNewPost("");
@@ -76,207 +101,173 @@ export default function CommunityPage() {
     setPosting(false);
   };
 
-  const handleLike = async (postId: string, currentLikedBy: string[]) => {
-    if (!user) return;
-    setLikingIds((prev) => new Set(prev).add(postId));
-    const postRef = doc(db, "posts", postId);
-    const hasLiked = currentLikedBy?.includes(user.uid);
-
-    try {
-      if (hasLiked) {
-        await updateDoc(postRef, {
-          likes: increment(-1),
-          likedBy: currentLikedBy.filter((uid) => uid !== user.uid),
-        });
-      } else {
-        await updateDoc(postRef, {
-          likes: increment(1),
-          likedBy: [...(currentLikedBy || []), user.uid],
-        });
-      }
-    } catch (error) {
-      console.error("Failed to like:", error);
-    }
-    setLikingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(postId);
-      return next;
-    });
-  };
-
-  const handleDelete = async (postId: string) => {
-    if (!window.confirm("Delete this post?")) return;
-    try {
-      await deleteDoc(doc(db, "posts", postId));
-    } catch (error) {
-      console.error("Failed to delete:", error);
-    }
-  };
-
-  const formatTime = (ts: Timestamp | null) => {
-    if (!ts || !ts.toDate) return "Just now";
-    const now = new Date();
-    const diff = now.getTime() - ts.toDate().getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    return ts.toDate().toLocaleDateString();
-  };
-
-  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNewPost(e.target.value);
-    // Auto-resize
-    e.target.style.height = "auto";
-    e.target.style.height = e.target.scrollHeight + "px";
-  };
-
   const charsLeft = MAX_CHARS - newPost.length;
 
   return (
-    <div className="px-4 sm:px-6 py-6 sm:py-8 w-full max-w-2xl mx-auto">
+    <div className="px-4 sm:px-6 py-6 sm:py-8 w-full max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-2xl bg-violet-500/10 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-violet-500" />
+          <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shadow-sm">
+            <Globe className="w-6 h-6 text-violet-500" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-outfit font-black text-foreground">Community</h1>
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-outfit font-black text-foreground">Global Town Square</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Connect with gamers worldwide. Drop hot takes, reviews, or just say hi.
+            </p>
+          </div>
         </div>
-        <p className="text-muted-foreground text-sm">
-          The global town square for gamers. Share thoughts, hot takes, and discoveries.
-        </p>
       </div>
 
-      {/* Compose Box */}
-      {user ? (
-        <div className="bg-card border border-border rounded-2xl p-4 mb-6 shadow-sm">
-          <div className="flex gap-3">
-            <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden">
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-              ) : (
-                user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Feed */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Compose Box */}
+          {user ? (
+            <div className="bg-card border border-border rounded-3xl p-5 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-violet-500 to-fuchsia-500 opacity-50" />
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden shadow-md">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <textarea
+                    ref={textareaRef}
+                    value={newPost}
+                    onChange={(e) => {
+                      setNewPost(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = e.target.scrollHeight + "px";
+                    }}
+                    placeholder="What game is on your mind?"
+                    maxLength={MAX_CHARS}
+                    rows={2}
+                    className="w-full bg-transparent text-foreground placeholder-muted-foreground text-[15px] resize-none outline-none border-none focus:ring-0 overflow-hidden pt-2"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handlePost();
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    <span className={`text-xs font-semibold ${charsLeft < 30 ? (charsLeft < 0 ? "text-red-500" : "text-amber-500") : "text-muted-foreground"}`}>
+                      {charsLeft}
+                    </span>
+                    <button
+                      onClick={handlePost}
+                      disabled={posting || !newPost.trim() || newPost.length > MAX_CHARS}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-40 shadow-sm"
+                    >
+                      {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Post
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-3xl p-8 text-center shadow-sm">
+              <MessageCircle className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-foreground mb-2">Join the conversation</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">Log in to post your thoughts, reply to others, and earn badges based on your reviews.</p>
+              <Link href="/login" className="inline-flex px-8 py-3 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-xl transition-all shadow-md">
+                Sign In to Post
+              </Link>
+            </div>
+          )}
+
+          {/* Posts Feed */}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-20 bg-black/5 dark:bg-white/5 rounded-3xl border border-dashed border-border">
+              <Gamepad2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-foreground mb-2">No posts yet</h2>
+              <p className="text-muted-foreground text-sm">Be the first to start the conversation!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {posts.map((post) => (
+                <PostItem key={post.id} post={post} user={user} />
+              ))}
+              
+              {hasMore && (
+                <div className="pt-4 pb-2 text-center">
+                  <button
+                    onClick={loadMorePosts}
+                    disabled={loadingMore}
+                    className="px-6 py-2.5 bg-card border border-border hover:border-violet-500/50 text-foreground text-sm font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center mx-auto gap-2"
+                  >
+                    {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {loadingMore ? "Loading..." : "Load More Posts"}
+                  </button>
+                </div>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <textarea
-                ref={textareaRef}
-                value={newPost}
-                onChange={handleTextareaInput}
-                placeholder="What's on your mind, gamer?"
-                maxLength={MAX_CHARS}
-                rows={2}
-                className="w-full bg-transparent text-foreground placeholder-muted-foreground text-sm resize-none outline-none border-none focus:ring-0 overflow-hidden"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handlePost();
-                  }
-                }}
-              />
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                <span className={`text-xs font-medium ${charsLeft < 30 ? (charsLeft < 0 ? "text-red-500" : "text-amber-500") : "text-muted-foreground"}`}>
-                  {charsLeft} characters left
-                </span>
-                <button
-                  onClick={handlePost}
-                  disabled={posting || !newPost.trim() || newPost.length > MAX_CHARS}
-                  className="flex items-center gap-2 px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Post
-                </button>
+          )}
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="hidden lg:block space-y-6">
+          {/* Trending Block */}
+          <div className="bg-card border border-border rounded-3xl p-5 shadow-sm sticky top-24">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+              <TrendingUp className="w-4 h-4 text-violet-500" />
+              <h2 className="font-bold text-sm text-foreground uppercase tracking-wider">Trending Topics</h2>
+            </div>
+            <div className="space-y-3">
+              {[
+                { tag: "#GTA6", posts: "2.4k" },
+                { tag: "#MonsterHunterWilds", posts: "1.8k" },
+                { tag: "#EldenRing", posts: "940" },
+                { tag: "#NintendoSwitch2", posts: "820" },
+                { tag: "#IndieGames", posts: "560" },
+              ].map((trend) => (
+                <div key={trend.tag} className="flex items-center justify-between group cursor-pointer">
+                  <span className="text-sm font-semibold text-foreground group-hover:text-violet-500 transition-colors">{trend.tag}</span>
+                  <span className="text-xs text-muted-foreground">{trend.posts} posts</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex items-center gap-2 mb-4 pb-3 border-b border-border">
+              <Users className="w-4 h-4 text-blue-500" />
+              <h2 className="font-bold text-sm text-foreground uppercase tracking-wider">Top Voices</h2>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-fuchsia-500 flex items-center justify-center text-white font-bold text-xs">M</div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">MarkD</div>
+                  <UserBadge reviewCount={42} />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold text-xs">S</div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">SarahGamer</div>
+                  <UserBadge reviewCount={18} />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-xs">J</div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">JRPG_Fan</div>
+                  <UserBadge reviewCount={8} />
+                </div>
               </div>
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-card border border-border rounded-2xl p-6 mb-6 text-center">
-          <MessageCircle className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground mb-3">Log in to join the conversation</p>
-          <Link href="/login" className="inline-flex px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-xl transition-colors">
-            Log In
-          </Link>
-        </div>
-      )}
-
-      {/* Posts Feed */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="text-center py-16">
-          <Gamepad2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-foreground mb-2">No posts yet</h2>
-          <p className="text-muted-foreground text-sm">Be the first to start the conversation!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {posts.map((post) => {
-            const hasLiked = post.likedBy?.includes(user?.uid || "");
-            return (
-              <article
-                key={post.id}
-                className="bg-card border border-border rounded-2xl p-4 hover:border-violet-500/20 transition-colors shadow-sm"
-              >
-                <div className="flex gap-3">
-                  {/* Avatar */}
-                  <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
-                    {post.userPhoto ? (
-                      <img src={post.userPhoto} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      post.userName?.[0]?.toUpperCase() || "U"
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm text-foreground truncate">{post.userName}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">· {formatTime(post.createdAt)}</span>
-                    </div>
-
-                    {/* Body */}
-                    <p className="text-sm text-foreground/90 whitespace-pre-wrap wrap-break-word leading-relaxed">
-                      {post.text}
-                    </p>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-4 mt-3">
-                      <button
-                        onClick={() => handleLike(post.id, post.likedBy || [])}
-                        disabled={!user || likingIds.has(post.id)}
-                        className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
-                          hasLiked
-                            ? "text-rose-500"
-                            : "text-muted-foreground hover:text-rose-500"
-                        } disabled:opacity-40`}
-                      >
-                        <Heart className={`w-4 h-4 ${hasLiked ? "fill-rose-500" : ""}`} />
-                        {post.likes > 0 && post.likes}
-                      </button>
-
-                      {user?.uid === post.userId && (
-                        <button
-                          onClick={() => handleDelete(post.id)}
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

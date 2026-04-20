@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, Check, Loader2, Play, Trophy, XCircle, Clock } from "lucide-react";
+import { Plus, Check, Loader2, Play, Trophy, XCircle, Clock, PauseCircle, Medal } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -9,11 +9,13 @@ import { Game } from "@/lib/types";
 import { logActivity } from "@/lib/activityLogger";
 import { motion, AnimatePresence } from "framer-motion";
 
-type LibraryStatus = "playing" | "beaten" | "dropped" | "plan";
+type LibraryStatus = "playing" | "beaten" | "dropped" | "plan" | "on_hold" | "completed_100";
 
 const STATUSES: { id: LibraryStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { id: "playing", label: "Playing", icon: <Play className="w-3.5 h-3.5" />, color: "text-green-500" },
   { id: "beaten", label: "Beaten", icon: <Trophy className="w-3.5 h-3.5" />, color: "text-blue-500" },
+  { id: "completed_100", label: "100% Achieved", icon: <Medal className="w-3.5 h-3.5" />, color: "text-amber-500" },
+  { id: "on_hold", label: "On Hold", icon: <PauseCircle className="w-3.5 h-3.5" />, color: "text-orange-500" },
   { id: "dropped", label: "Dropped", icon: <XCircle className="w-3.5 h-3.5" />, color: "text-red-500" },
   { id: "plan", label: "Plan to Play", icon: <Clock className="w-3.5 h-3.5" />, color: "text-yellow-500" },
 ];

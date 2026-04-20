@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, where, getDocs } from "firebase/firestore";
 
 const RAWG_KEY = process.env.NEXT_PUBLIC_RAWG_API_KEY;
 
@@ -38,7 +38,7 @@ const RATING_OPTIONS = [
 ];
 
 export default function RateTopGamesPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const [games, setGames] = useState<RateGame[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -53,21 +53,46 @@ export default function RateTopGamesPage() {
   }, []);
 
   useEffect(() => {
+    // Only fetch games once auth is resolved
+    if (user === undefined) return;
+
     const fetchGames = async () => {
+      setLoading(true);
       try {
+        // 1. Fetch user's existing ratings to filter them out
+        const ratedGameIds = new Set<number>();
+        if (user) {
+          const q = query(collection(db, "gameRatings"), where("userId", "==", user.uid));
+          const snap = await getDocs(q);
+          snap.forEach(d => ratedGameIds.add(d.data().gameId));
+        }
+
+        // 2. Fetch daily rotated games
+        const dayOfWeek = new Date().getDay() + 1; // 1 to 7
         const res = await fetch(
-          `https://api.rawg.io/api/games?key=${RAWG_KEY}&ordering=-rating&page_size=30&metacritic=85,100`
+          `https://api.rawg.io/api/games?key=${RAWG_KEY}&ordering=-rating&page_size=30&metacritic=85,100&page=${dayOfWeek}`
         );
         const data = await res.json();
-        setGames(data.results || []);
-      } catch {
-        // silently fail
+        
+        // 3. Filter out rated games
+        const fetchedGames: RateGame[] = data.results || [];
+        const unratedGames = fetchedGames.filter(g => !ratedGameIds.has(g.id));
+
+        // 4. Update state or redirect if none left
+        setGames(unratedGames);
+        
+        if (unratedGames.length === 0 && fetchedGames.length > 0) {
+          // Finished today's queue
+          setTimeout(() => router.push("/reviews"), 1500);
+        }
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
     fetchGames();
-  }, []);
+  }, [user, router]);
 
   const loadUserRating = useCallback(async (gameId: number) => {
     if (!user) return;

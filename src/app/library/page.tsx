@@ -12,7 +12,7 @@ import { Game } from "@/lib/types";
 
 
 
-type LibraryStatus = "playing" | "beaten" | "dropped" | "plan" | "wishlist";
+type LibraryStatus = "playing" | "beaten" | "dropped" | "plan" | "wishlist" | "on_hold" | "completed_100";
 
 interface LibraryItem {
   docId: string;
@@ -22,11 +22,13 @@ interface LibraryItem {
 }
 
 const STATUS_LABELS: Record<LibraryStatus, { label: string; color: string }> = {
-  playing: { label: "Playing", color: "bg-green-500" },
-  beaten: { label: "Beaten", color: "bg-blue-500" },
-  dropped: { label: "Dropped", color: "bg-red-500" },
-  plan: { label: "Plan to Play", color: "bg-yellow-500" },
-  wishlist: { label: "Wishlist", color: "bg-violet-500" },
+  playing: { label: "Playing", color: "text-green-500 bg-green-500/10 border-green-500/20" },
+  beaten: { label: "Beaten", color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+  completed_100: { label: "100% Achieved", color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
+  on_hold: { label: "On Hold", color: "text-orange-500 bg-orange-500/10 border-orange-500/20" },
+  dropped: { label: "Dropped", color: "text-red-500 bg-red-500/10 border-red-500/20" },
+  plan: { label: "Plan to Play", color: "text-yellow-500 bg-yellow-500/10 border-yellow-500/20" },
+  wishlist: { label: "Wishlist", color: "text-pink-500 bg-pink-500/10 border-pink-500/20" },
 };
 
 export default function LibraryPage() {
@@ -132,7 +134,7 @@ export default function LibraryPage() {
             <div key={item.docId} className="relative group">
               <GameCard game={item.game} />
               {/* Status Badge */}
-              <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white z-10 ${STATUS_LABELS[item.status]?.color ?? "bg-muted"}`}>
+              <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold border z-10 backdrop-blur-md ${STATUS_LABELS[item.status]?.color ?? "bg-muted text-foreground"}`}>
                 {STATUS_LABELS[item.status]?.label}
               </div>
               {/* Remove button */}

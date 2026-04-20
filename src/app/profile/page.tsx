@@ -14,6 +14,7 @@ import {
   Loader2, Settings, BookOpen, Heart, Star, FolderOpen, Users, UserPlus, UserMinus, Gamepad2
 } from "lucide-react";
 import GameCard from "@/components/GameCard";
+import UserBadge from "@/components/UserBadge";
 import { Game } from "@/lib/types";
 
 interface ProfileUser {
@@ -203,6 +204,7 @@ export default function ProfilePage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-outfit font-black text-foreground flex items-center gap-2">
               {profileUser.displayName}
+              <UserBadge reviewCount={reviews.length} />
             </h1>
             
             {/* Badges Display */}

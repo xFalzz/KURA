@@ -43,9 +43,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   try {
     const game = await getGameDetails(slug) as GameDetail;
+    const desc = game.description_raw?.slice(0, 160) || `Discover ${game.name} on KURA`;
+    const image = game.background_image || "";
     return {
       title: `${game.name} | KURA`,
-      description: game.description_raw?.slice(0, 160) || `Discover ${game.name} on KURA`,
+      description: desc,
+      openGraph: {
+        title: `${game.name} | KURA`,
+        description: desc,
+        images: [{ url: image }],
+        type: 'website'
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${game.name} | KURA`,
+        description: desc,
+        images: [image],
+      }
     };
   } catch {
     return { title: "Game | KURA" };

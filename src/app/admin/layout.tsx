@@ -41,6 +41,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "MANAGEMENT",
     items: [
       { href: "/admin/reviews", label: "Content Moderation", icon: MessageSquare },
+      { href: "/admin/community", label: "Community Moderation", icon: Globe },
       { href: "/admin/users", label: "User Directory", icon: Users },
       { href: "/admin/reports", label: "User Reports", icon: Flag, badge: "reports" },
       { href: "/admin/feedback", label: "User Feedback", icon: MessageCircle, badge: "feedback" },
@@ -83,8 +84,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  // Separate effect for mounting to avoid synchronous setState in effect
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
         setIsAuthorized(false);
@@ -221,7 +226,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {NAV_SECTIONS.map((section) => (
             <div key={section.label}>
               {!sidebarCollapsed && (
-                <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.1em] px-3 mb-2">
+                <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-2">
                   {section.label}
                 </h3>
               )}
