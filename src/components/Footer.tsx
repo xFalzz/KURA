@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { Gamepad2, X, Mail, ShieldCheck, FileText } from "lucide-react";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 type ModalType = "privacy" | "terms" | "contact" | null;
 
 export default function Footer() {
   const [modal, setModal] = useState<ModalType>(null);
-
+  const { config } = usePlatformConfig();
   const closeModal = () => setModal(null);
 
   return (
@@ -17,12 +18,12 @@ export default function Footer() {
           <div className="flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
             <Gamepad2 className="w-6 h-6 text-violet-500" />
             <span className="font-outfit text-xl font-bold text-foreground">
-              KURA
+              {config.general.platformName}
             </span>
           </div>
-          
+
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} KURA Video Game Discovery. Built with Next.js & RAWG API.
+            {config.general.footerText || `© ${new Date().getFullYear()} ${config.general.platformName} Video Game Discovery.`}
           </p>
 
           <div className="flex items-center gap-6 text-sm font-medium text-muted-foreground">

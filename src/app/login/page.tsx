@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Gamepad2, Mail, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -39,7 +40,18 @@ export default function LoginPage() {
     setError("");
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const u = result.user;
+      // Upsert user document so they appear in Admin User Directory
+      await setDoc(doc(db, "users", u.uid), {
+        displayName: u.displayName || "",
+        email: u.email || "",
+        photoURL: u.photoURL || "",
+        provider: "google",
+        role: u.email === "kuragochidevanz@gmail.com" ? "owner" : "user",
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      }, { merge: true });
       router.push("/");
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -150,9 +162,9 @@ export default function LoginPage() {
           </form>
 
           <div className="relative flex items-center mb-6">
-            <div className="flex-grow border-t border-border"></div>
-            <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-semibold uppercase tracking-wider">Or continue with</span>
-            <div className="flex-grow border-t border-border"></div>
+            <div className="grow border-t border-border"></div>
+            <span className="shrink-0 mx-4 text-muted-foreground text-xs font-semibold uppercase tracking-wider">Or continue with</span>
+            <div className="grow border-t border-border"></div>
           </div>
 
           <Button 

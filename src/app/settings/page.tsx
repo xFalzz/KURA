@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 type TabId = "profile" | "gaming" | "notifications" | "password";
 
@@ -185,7 +186,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 rounded-full bg-violet-600 flex items-center justify-center text-2xl font-bold text-white shadow-md overflow-hidden relative shrink-0">
                 {user?.photoURL ? (
-                  <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image src={user.photoURL} alt="Avatar" fill sizes="80px" className="object-cover" />
                 ) : (
                   <>{displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}</>
                 )}

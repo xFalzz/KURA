@@ -5,9 +5,10 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
   collection, addDoc, query, orderBy, limit, onSnapshot,
-  serverTimestamp, doc, updateDoc, increment, deleteDoc, Timestamp
+  serverTimestamp, QueryDocumentSnapshot, DocumentData
 } from "firebase/firestore";
 import { MessageCircle, Send, Gamepad2, TrendingUp, Users, Loader2, Globe } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import UserBadge from "@/components/UserBadge";
 
@@ -24,7 +25,7 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function CommunityPage() {
       return unsub;
     };
     
-    let unsubscribe: any;
+    let unsubscribe: (() => void) | undefined;
     fetchInitial().then(unsub => { unsubscribe = unsub; });
     return () => { if (unsubscribe) unsubscribe(); };
   }, []);
@@ -128,9 +129,9 @@ export default function CommunityPage() {
             <div className="bg-card border border-border rounded-3xl p-5 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-violet-500 to-fuchsia-500 opacity-50" />
               <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden shadow-md">
+                <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden shadow-md relative">
                   {user.photoURL ? (
-                    <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                    <Image src={user.photoURL} alt="" fill sizes="48px" className="object-cover" />
                   ) : (
                     user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
                   )}

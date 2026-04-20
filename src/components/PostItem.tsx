@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { MessageCircle, Send, Heart, Trash2, Loader2, Share2, Check } from "lucide-react";
 import UserBadge from "@/components/UserBadge";
+import Image from "next/image";
 
 export interface Post {
   id: string;
@@ -160,10 +161,9 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
     <article className="bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-violet-500/20 transition-all shadow-sm mb-4">
       <div className="flex gap-3">
         {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden shadow-sm">
+        <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden shadow-sm relative">
           {post.userPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.userPhoto} alt="" className="w-full h-full object-cover" />
+            <Image src={post.userPhoto || ""} alt="" fill sizes="40px" className="object-cover" />
           ) : (
             post.userName?.[0]?.toUpperCase() || "U"
           )}
@@ -229,10 +229,9 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
         <div className="mt-4 pt-4 border-t border-border ml-2 sm:ml-12 space-y-4">
           {comments.map(c => (
             <div key={c.id} className="flex gap-3 relative group">
-              <div className="w-8 h-8 rounded-full bg-violet-600/50 flex items-center justify-center text-white font-bold text-[10px] shrink-0 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-violet-600/50 flex items-center justify-center text-white font-bold text-[10px] shrink-0 overflow-hidden relative">
                 {c.userPhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={c.userPhoto} alt="" className="w-full h-full object-cover" />
+                  <Image src={c.userPhoto || ""} alt="" fill sizes="32px" className="object-cover" />
                 ) : (
                   c.userName?.[0]?.toUpperCase() || "U"
                 )}
@@ -260,10 +259,9 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
 
           {user ? (
             <div className="flex gap-3 mt-2">
-              <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0 overflow-hidden relative">
                 {user.photoURL ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                  <Image src={user.photoURL || ""} alt="" fill sizes="32px" className="object-cover" />
                 ) : (
                   user.displayName?.[0]?.toUpperCase() || "U"
                 )}

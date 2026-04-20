@@ -4,7 +4,6 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { isAdmin } from "@/lib/admin";
 import { Wrench } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -59,11 +58,13 @@ const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
 interface PlatformConfigContextType {
   config: PlatformConfig;
   isLoading: boolean;
+  userRole: "user" | "staff" | "admin" | "owner";
 }
 
 const PlatformConfigContext = createContext<PlatformConfigContextType>({
   config: DEFAULT_PLATFORM_CONFIG,
   isLoading: true,
+  userRole: "user",
 });
 
 export function usePlatformConfig() {
@@ -74,13 +75,33 @@ export function PlatformConfigProvider({ children }: { children: React.ReactNode
   const [config, setConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
   const [maintenance, setMaintenance] = useState<MaintenanceConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userRole, setUserRole] = useState<"user" | "staff" | "admin" | "owner">("user");
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    // 1. Check Auth Status to determine if user is admin
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      setIsUserAdmin(user ? isAdmin() : false);
+    // 1. Check Auth Status to determine user role
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (user.email === "kuragochidevanz@gmail.com") {
+          setUserRole("owner");
+          setIsUserAdmin(true);
+        } else {
+          // Fetch role from Firestore
+          const docRef = doc(db, "users", user.uid);
+          const unsubUser = onSnapshot(docRef, (snap) => {
+             if (snap.exists()) {
+               const role = snap.data().role || "user";
+               setUserRole(role);
+               setIsUserAdmin(role === "admin" || role === "owner");
+             }
+          });
+          return () => unsubUser();
+        }
+      } else {
+        setUserRole("user");
+        setIsUserAdmin(false);
+      }
     });
 
     // 2. Listen to Platform Config
@@ -169,7 +190,7 @@ export function PlatformConfigProvider({ children }: { children: React.ReactNode
 
   // Normal App Render
   return (
-    <PlatformConfigContext.Provider value={{ config, isLoading }}>
+    <PlatformConfigContext.Provider value={{ config, isLoading, userRole }}>
       {children}
     </PlatformConfigContext.Provider>
   );

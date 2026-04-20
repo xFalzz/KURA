@@ -7,7 +7,7 @@ import { Gamepad2, Mail, Lock, User, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
@@ -27,12 +27,16 @@ export default function RegisterPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
-      
-      // Initialize user document in Firestore for Wishlist
+
+      // Write Firestore user doc with standardized fields for Admin User Directory
       await setDoc(doc(db, "users", userCredential.user.uid), {
-        name,
+        displayName: name,
         email,
-        createdAt: new Date().toISOString()
+        photoURL: "",
+        provider: "email",
+        role: email === "kuragochidevanz@gmail.com" ? "owner" : "user",
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
       });
 
       router.push("/");
@@ -53,12 +57,16 @@ export default function RegisterPage() {
     const provider = new GoogleAuthProvider();
     try {
       const userCredential = await signInWithPopup(auth, provider);
-      
-      // We can also ensure user doc exists here, but usually it's fine just to create it if needed later
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        name: userCredential.user.displayName,
-        email: userCredential.user.email,
-        lastLogin: new Date().toISOString()
+      const u = userCredential.user;
+      // Upsert user doc with standardized fields for Admin User Directory
+      await setDoc(doc(db, "users", u.uid), {
+        displayName: u.displayName || "",
+        email: u.email || "",
+        photoURL: u.photoURL || "",
+        provider: "google",
+        role: u.email === "kuragochidevanz@gmail.com" ? "owner" : "user",
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
       }, { merge: true });
 
       router.push("/");
@@ -108,8 +116,8 @@ export default function RegisterPage() {
           style={{ backgroundImage: "url('/auth-bg.png')" }}
         />
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-r from-black/80 to-transparent" />
         
         {/* Top Content */}
         <div className="relative z-10 p-12">

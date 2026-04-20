@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { initializeApp, getApps, getApp } from "firebase/app";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -46,14 +47,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         description: desc,
       }
     };
-  } catch (error) {
+  } catch {
     return { title: "Community Post | KURA" };
   }
 }
 
 export default async function PostPage({ params }: Props) {
   const { id } = await params;
-  let postData: any = null;
+  let postData: { id: string; text?: string; userName?: string; userPhoto?: string } | null = null;
 
   try {
     const postRef = doc(db, "posts", id);
@@ -91,10 +92,9 @@ export default async function PostPage({ params }: Props) {
       */}
       <div className="bg-card border border-border rounded-2xl p-6">
         <div className="flex gap-4">
-          <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden">
+          <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold shrink-0 overflow-hidden relative">
             {postData.userPhoto ? (
-               // eslint-disable-next-line @next/next/no-img-element
-              <img src={postData.userPhoto} alt="" className="w-full h-full object-cover" />
+              <Image src={postData.userPhoto || ""} alt="" fill sizes="48px" className="object-cover" />
             ) : (
               postData.userName?.[0]?.toUpperCase() || "U"
             )}

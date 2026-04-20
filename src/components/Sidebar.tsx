@@ -12,7 +12,8 @@ import { useState, useEffect } from "react";
 import { useGenres, usePlatforms } from "@/hooks/useGames";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { Heart, BookOpen, Users, Bell, PlusCircle, AlertCircle, Globe } from "lucide-react";
+import { Heart, BookOpen, Users, Bell, PlusCircle, AlertCircle } from "lucide-react";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 const genreIconMap: Record<string, React.ReactNode> = {
   action: <Sword className="w-4 h-4" />,
@@ -68,6 +69,7 @@ export default function Sidebar() {
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
+  const { config } = usePlatformConfig();
   const { data: genresData } = useGenres();
   const { data: platformsData } = usePlatforms();
 
@@ -99,7 +101,9 @@ export default function Sidebar() {
         <SectionTitle href="/reviews">Reviews</SectionTitle>
         <SectionTitle href="/community">Community</SectionTitle>
         <div className="md:hidden mt-2 ml-1 space-y-0.5">
-          <NavItem href="/rate/thebest" icon={<Star className="w-4 h-4" />} label="Rate Games" active={pathname === "/rate/thebest"} />
+          {config.features.rateGames && (
+            <NavItem href="/rate/thebest" icon={<Star className="w-4 h-4" />} label="Rate Games" active={pathname === "/rate/thebest"} />
+          )}
           <NavItem href="/docs" icon={<BookOpen className="w-4 h-4" />} label="Docs" active={pathname.startsWith("/docs")} />
         </div>
       </div>
@@ -116,16 +120,24 @@ export default function Sidebar() {
             </span>
           </Link>
           <div className="ml-1 mt-1 space-y-0.5">
-            <NavItem href="/wishlist" icon={<Heart className="w-4 h-4" />} label="Wishlist" active={pathname === "/wishlist"} />
-            <NavItem href="/library" icon={<BookOpen className="w-4 h-4" />} label="My Library" active={pathname === "/library"} />
+            {config.features.wishlist && (
+              <NavItem href="/wishlist" icon={<Heart className="w-4 h-4" />} label="Wishlist" active={pathname === "/wishlist"} />
+            )}
+            {config.features.collections && (
+              <NavItem href="/library" icon={<BookOpen className="w-4 h-4" />} label="My Library" active={pathname === "/library"} />
+            )}
             <NavItem href="/following" icon={<Users className="w-4 h-4" />} label="People you follow" active={pathname === "/following"} />
           </div>
           <div className="sm:hidden ml-1 mt-0.5 space-y-0.5">
             <NavItem href="/notifications" icon={<Bell className="w-4 h-4" />} label="Notifications" active={pathname === "/notifications"} />
             <div className="h-px bg-border my-2 mx-3" />
-            <NavItem href="/library" icon={<PlusCircle className="w-4 h-4" />} label="Add Game to Library" />
+            {config.features.collections && (
+              <NavItem href="/library" icon={<PlusCircle className="w-4 h-4" />} label="Add Game to Library" />
+            )}
             <NavItem href="/search" icon={<AlertCircle className="w-4 h-4" />} label="Add missing game" />
-            <NavItem href="/collections" icon={<Grid2X2 className="w-4 h-4" />} label="New Collection" />
+            {config.features.collections && (
+              <NavItem href="/collections" icon={<Grid2X2 className="w-4 h-4" />} label="New Collection" />
+            )}
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getCountFromServer, getDocs, limit, query, where, orderBy, Timestamp } from "firebase/firestore";
 import {
-  Users, MessageSquare, Star, TrendingUp, TrendingDown, Activity, Flag,
+  Users, MessageSquare, Star, Activity, Flag,
   ArrowUpRight, ArrowDownRight, Eye, Gamepad2, Clock, UserPlus,
   Trash2, Pin, Megaphone, ShieldBan, FileText
 } from "lucide-react";

@@ -29,7 +29,11 @@ export default function Navbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  // Separate effect for mounting to avoid synchronous setState in effect
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
   const searchRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const plusRef = useRef<HTMLDivElement>(null);
@@ -120,7 +124,7 @@ export default function Navbar() {
         <Link href="/" className={`flex items-center gap-2 shrink-0 mr-2 ${isMobileSearchOpen ? 'hidden sm:flex' : ''}`}>
           <Gamepad2 className="w-7 h-7 text-violet-500 dark:text-violet-400" />
           <span className="font-outfit text-xl font-black tracking-tighter text-foreground">
-            KURA
+            {config.general.platformName}
           </span>
         </Link>
 

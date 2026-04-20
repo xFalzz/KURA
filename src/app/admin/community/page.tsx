@@ -103,9 +103,9 @@ export default function AdminCommunityPage() {
                   <tr key={post.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden relative">
                           {post.userPhoto ? (
-                            <img src={post.userPhoto} alt="" className="w-full h-full object-cover" />
+                            <Image src={post.userPhoto || ""} alt="" fill sizes="32px" className="object-cover" />
                           ) : (
                             post.userName?.[0]?.toUpperCase() || "U"
                           )}

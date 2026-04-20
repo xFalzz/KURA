@@ -5,6 +5,7 @@ import { X, Gamepad2, BookOpen, Heart, Users, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 // Use reliable image sources that won't have CORS issues
 const LEFT_COVERS = [
@@ -25,6 +26,7 @@ const RIGHT_COVERS = [
 export default function GuestBanner() {
   const [visible, setVisible] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const { config } = usePlatformConfig();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -122,16 +124,15 @@ export default function GuestBanner() {
         {/* Badge */}
         <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1 mb-4">
           <Gamepad2 className="w-3.5 h-3.5 text-white/80" />
-          <span className="text-xs font-bold text-white/90 tracking-wide uppercase">KURA</span>
+          <span className="text-xs font-bold text-white/90 tracking-wide uppercase">{config.general.platformName}</span>
         </div>
 
         {/* Headline */}
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-outfit font-black text-white mb-2 tracking-tight drop-shadow-lg">
-          Discover your next{" "}
-          <span className="text-yellow-300">favorite game</span>
+          {config.general.tagline || "Discover your next favourite game"}
         </h2>
         <p className="text-white/70 text-xs sm:text-sm mb-4 sm:mb-5 max-w-xs sm:max-w-sm leading-relaxed">
-          Track your library, build wishlists, write reviews, and follow friends — all free, forever.
+          Track your library, build wishlists, and follow friends — all on {config.general.platformName}.
         </p>
 
         {/* Feature pills */}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, limit, Timestamp, getCountFromServer } from "firebase/firestore";
 import {
-  BarChart3, Users, MessageSquare, TrendingUp, Loader2, Star, Clock, Gamepad2
+  BarChart3, Users, MessageSquare, TrendingUp, Star, Gamepad2
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -101,7 +101,7 @@ export default function AdminAnalyticsPage() {
         const allReviewsQ = query(reviewsColl, limit(500));
         const allReviewsSnap = await getDocs(allReviewsQ);
         const ratingCounts = [0, 0, 0, 0, 0]; // 1-5 stars
-        const genreCounts: Record<string, number> = {};
+        // We intentionally removed the genreCounts logic since it's unused
         const userCounts: Record<string, { name: string; count: number }> = {};
         const gameCounts: Record<string, { name: string; count: number }> = {};
 

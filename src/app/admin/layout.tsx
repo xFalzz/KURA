@@ -5,8 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, query, where, getCountFromServer } from "firebase/firestore";
-import { isAdmin } from "@/lib/admin";
 import { useTheme } from "next-themes";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 import {
   Loader2, ShieldAlert, LayoutDashboard, MessageSquare, Users,
   Flag, ScrollText, Megaphone, Sparkles, Globe,
@@ -23,6 +23,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
   badge?: string;
+  minRole?: "owner" | "admin" | "staff";
 }
 
 interface NavSection {
@@ -40,34 +41,34 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "MANAGEMENT",
     items: [
-      { href: "/admin/reviews", label: "Content Moderation", icon: MessageSquare },
-      { href: "/admin/community", label: "Community Moderation", icon: Globe },
-      { href: "/admin/users", label: "User Directory", icon: Users },
-      { href: "/admin/reports", label: "User Reports", icon: Flag, badge: "reports" },
-      { href: "/admin/feedback", label: "User Feedback", icon: MessageCircle, badge: "feedback" },
+      { href: "/admin/reviews", label: "Content Moderation", icon: MessageSquare, minRole: "staff" },
+      { href: "/admin/community", label: "Community Moderation", icon: Globe, minRole: "staff" },
+      { href: "/admin/users", label: "User Directory", icon: Users, minRole: "admin" },
+      { href: "/admin/reports", label: "User Reports", icon: Flag, badge: "reports", minRole: "staff" },
+      { href: "/admin/feedback", label: "User Feedback", icon: MessageCircle, badge: "feedback", minRole: "staff" },
     ],
   },
   {
     label: "TOOLS",
     items: [
-      { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
-      { href: "/admin/curations", label: "Curation Engine", icon: Sparkles },
-      { href: "/admin/games", label: "Game Manager", icon: Gamepad2 },
-      { href: "/admin/seo", label: "Global SEO", icon: Globe },
+      { href: "/admin/announcements", label: "Announcements", icon: Megaphone, minRole: "admin" },
+      { href: "/admin/curations", label: "Curation Engine", icon: Sparkles, minRole: "admin" },
+      { href: "/admin/games", label: "Game Manager", icon: Gamepad2, minRole: "staff" },
+      { href: "/admin/seo", label: "Global SEO", icon: Globe, minRole: "admin" },
     ],
   },
   {
     label: "ANALYTICS",
     items: [
-      { href: "/admin/analytics", label: "Platform Analytics", icon: BarChart3 },
+      { href: "/admin/analytics", label: "Platform Analytics", icon: BarChart3, minRole: "staff" },
     ],
   },
   {
     label: "SYSTEM",
     items: [
-      { href: "/admin/logs", label: "Audit Logs", icon: ScrollText },
-      { href: "/admin/maintenance", label: "Maintenance Mode", icon: Wrench },
-      { href: "/admin/platform-settings", label: "Platform Settings", icon: Settings2 },
+      { href: "/admin/logs", label: "Audit Logs", icon: ScrollText, minRole: "admin" },
+      { href: "/admin/maintenance", label: "Maintenance Mode", icon: Wrench, minRole: "owner" },
+      { href: "/admin/platform-settings", label: "Platform Settings", icon: Settings2, minRole: "owner" },
     ],
   },
 ];
@@ -86,8 +87,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Separate effect for mounting to avoid synchronous setState in effect
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
+
+  const { userRole, isLoading: isConfigLoading } = usePlatformConfig();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -97,14 +101,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
       setCurrentUser(user);
-      if (isAdmin()) {
-        setIsAuthorized(true);
-      } else {
-        setIsAuthorized(false);
-      }
     });
     return () => unsub();
   }, [router]);
+
+  useEffect(() => {
+    if (!isConfigLoading) {
+      if (userRole === "admin" || userRole === "owner" || userRole === "staff") {
+        const timer = setTimeout(() => setIsAuthorized(true), 0);
+        return () => clearTimeout(timer);
+      } else {
+        const timer = setTimeout(() => setIsAuthorized(false), 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [userRole, isConfigLoading]);
 
   // Fetch badge counts
   useEffect(() => {
@@ -232,7 +243,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               )}
               {sidebarCollapsed && <div className="h-px bg-border mx-2 mb-2" />}
               <ul className="space-y-0.5">
-                {section.items.map((item) => {
+                {section.items.filter((item) => {
+                  if (!item.minRole) return true;
+                  if (item.minRole === "owner") return userRole === "owner";
+                  if (item.minRole === "admin") return userRole === "owner" || userRole === "admin";
+                  return true; // staff
+                }).map((item) => {
                   const active = isActive(item.href, item.exact);
                   const Icon = item.icon;
                   const badgeCount = getBadgeCount(item.badge);
@@ -419,7 +435,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <p className="text-sm font-semibold text-foreground leading-tight">
                     {currentUser.displayName || "Admin"}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">Administrator</p>
+                  <p className="text-[11px] text-muted-foreground capitalize">{userRole}</p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden ring-2 ring-primary/20">
                   {currentUser.photoURL ? (
