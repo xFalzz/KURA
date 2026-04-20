@@ -55,6 +55,9 @@ const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
   features: { collections: true, leaderboard: true, wishlist: true, chat: true, feedback: true, rateGames: true },
 };
 
+// Emails that always get privileged access regardless of Firestore role
+const OWNER_EMAIL = "kuragochidevanz@gmail.com";
+
 interface PlatformConfigContextType {
   config: PlatformConfig;
   isLoading: boolean;
@@ -79,32 +82,73 @@ export function PlatformConfigProvider({ children }: { children: React.ReactNode
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const pathname = usePathname();
 
+  // ── Auth + Role listener ────────────────────────────────────────────────
   useEffect(() => {
-    // 1. Check Auth Status to determine user role
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        if (user.email === "kuragochidevanz@gmail.com") {
-          setUserRole("owner");
-          setIsUserAdmin(true);
-        } else {
-          // Fetch role from Firestore
-          const docRef = doc(db, "users", user.uid);
-          const unsubUser = onSnapshot(docRef, (snap) => {
-             if (snap.exists()) {
-               const role = snap.data().role || "user";
-               setUserRole(role);
-               setIsUserAdmin(role === "admin" || role === "owner");
-             }
-          });
-          return () => unsubUser();
-        }
-      } else {
+    let unsubUser: (() => void) | undefined;
+
+    // IMPORTANT: callback must be synchronous (no async keyword).
+    // Firebase onAuthStateChanged ignores any return value from async callbacks.
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // Always clean up the previous user snapshot when auth state changes
+      if (unsubUser) {
+        unsubUser();
+        unsubUser = undefined;
+      }
+
+      if (!user) {
         setUserRole("user");
         setIsUserAdmin(false);
+        return;
       }
+
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+      // 1. Owner check (instant — no Firestore round-trip needed)
+      if (user.email === OWNER_EMAIL) {
+        console.log("[RBAC] Detected OWNER email:", user.email);
+        setUserRole("owner");
+        setIsUserAdmin(true);
+        return;
+      }
+
+      // 2. Legacy env-var admin check (instant)
+      if (adminEmail && user.email === adminEmail) {
+        console.log("[RBAC] Detected ADMIN email (env-var):", user.email);
+        setUserRole("admin");
+        setIsUserAdmin(true);
+        // Still subscribe to Firestore so role can be upgraded (but not downgraded below "admin")
+      }
+
+      // 3. Subscribe to Firestore user document for role
+      const docRef = doc(db, "users", user.uid);
+      unsubUser = onSnapshot(
+        docRef,
+        (snap) => {
+          if (snap.exists()) {
+            const firestoreRole = (snap.data().role as "user" | "staff" | "admin" | "owner") || "user";
+            // If env-var email already granted admin, don't downgrade to "user"
+            if (adminEmail && user.email === adminEmail && firestoreRole === "user") {
+              return;
+            }
+            setUserRole(firestoreRole);
+            setIsUserAdmin(firestoreRole === "admin" || firestoreRole === "owner");
+            console.log("[RBAC] Firestore role for", user.email, "is", firestoreRole);
+          }
+        },
+        (err) => {
+          console.error("[RBAC] Snapshot error:", err);
+        }
+      );
     });
 
-    // 2. Listen to Platform Config
+    return () => {
+      unsubAuth();
+      if (unsubUser) unsubUser();
+    };
+  }, []);
+
+  // ── Platform Config listener ────────────────────────────────────────────
+  useEffect(() => {
     const unsubPlatform = onSnapshot(
       doc(db, "settings", "platform_config"),
       (docSnap) => {
@@ -120,12 +164,14 @@ export function PlatformConfigProvider({ children }: { children: React.ReactNode
         }
       },
       (error) => {
-        // Silently ignore permission errors for guest users (if rules are strict)
         if (error.code !== "permission-denied") console.error("Platform config error:", error);
       }
     );
+    return () => unsubPlatform();
+  }, []);
 
-    // 3. Listen to Maintenance Config
+  // ── Maintenance Config listener ─────────────────────────────────────────
+  useEffect(() => {
     const unsubMaintenance = onSnapshot(
       doc(db, "settings", "maintenance_config"),
       (docSnap) => {
@@ -139,12 +185,7 @@ export function PlatformConfigProvider({ children }: { children: React.ReactNode
         setIsLoading(false);
       }
     );
-
-    return () => {
-      unsubAuth();
-      unsubPlatform();
-      unsubMaintenance();
-    };
+    return () => unsubMaintenance();
   }, []);
 
   // --- Maintenance Shield Logic ---
@@ -176,8 +217,8 @@ export function PlatformConfigProvider({ children }: { children: React.ReactNode
           )}
           <div className="pt-6 border-t border-border flex flex-col gap-3">
             <p className="text-xs text-muted-foreground">Are you an administrator?</p>
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
             >
               Admin Login

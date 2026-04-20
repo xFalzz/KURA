@@ -14,7 +14,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Game } from "@/lib/types";
 import { useTheme } from "next-themes";
 import Sidebar from "./Sidebar";
-import { isAdmin } from "@/lib/admin";
 import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 export default function Navbar() {
@@ -25,7 +24,7 @@ export default function Navbar() {
   const [isPlusOpen, setIsPlusOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const { config } = usePlatformConfig();
+  const { config, userRole } = usePlatformConfig();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -390,7 +389,7 @@ export default function Navbar() {
                           </Link>
                         )}
                         
-                        {isAdmin() && (
+                        {(userRole === "owner" || userRole === "admin" || userRole === "staff") && (
                           <Link href="/admin" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-violet-500 hover:bg-violet-500/10 transition-colors font-medium">
                             <ShieldAlert className="w-4 h-4 text-violet-500" />
                             Admin Panel

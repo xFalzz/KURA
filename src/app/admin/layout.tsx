@@ -67,8 +67,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: "SYSTEM",
     items: [
       { href: "/admin/logs", label: "Audit Logs", icon: ScrollText, minRole: "admin" },
-      { href: "/admin/maintenance", label: "Maintenance Mode", icon: Wrench, minRole: "owner" },
-      { href: "/admin/platform-settings", label: "Platform Settings", icon: Settings2, minRole: "owner" },
+      { href: "/admin/maintenance", label: "Maintenance Mode", icon: Wrench, minRole: "admin" },
+      { href: "/admin/platform-settings", label: "Platform Settings", icon: Settings2, minRole: "admin" },
     ],
   },
 ];
@@ -94,28 +94,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { userRole, isLoading: isConfigLoading } = usePlatformConfig();
 
   useEffect(() => {
+    // We still need to track the current firebase user for the UI (display name, etc.)
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) {
+      setCurrentUser(user);
+      if (!user && !isConfigLoading) {
         setIsAuthorized(false);
         router.push("/login?redirect=/admin");
-        return;
       }
-      setCurrentUser(user);
     });
     return () => unsub();
-  }, [router]);
+  }, [router, isConfigLoading]);
 
   useEffect(() => {
+    // If config is loaded, we can make a final decision on authorization
     if (!isConfigLoading) {
-      if (userRole === "admin" || userRole === "owner" || userRole === "staff") {
+      const privileged = userRole === "admin" || userRole === "owner" || userRole === "staff";
+      
+      if (privileged) {
         const timer = setTimeout(() => setIsAuthorized(true), 0);
         return () => clearTimeout(timer);
       } else {
-        const timer = setTimeout(() => setIsAuthorized(false), 0);
-        return () => clearTimeout(timer);
+        // If not privileged, check if we are still waiting for auth
+        if (auth.currentUser) {
+          // User is logged in but has no role yet? Or really just a user.
+          const timer = setTimeout(() => setIsAuthorized(false), 0);
+          return () => clearTimeout(timer);
+        } else {
+          // No user yet, keep it null (loading) for a bit
+        }
       }
     }
   }, [userRole, isConfigLoading]);
+
+  // (Counts effect stays the same)
 
   // Fetch badge counts
   useEffect(() => {

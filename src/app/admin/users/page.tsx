@@ -208,13 +208,21 @@ export default function AdminUsersPage() {
                     <select
                       className="text-xs bg-muted border border-border rounded-lg px-2 py-1.5 focus:outline-none"
                       value={user.role || "user"}
-                      disabled={processingId === user.id || (userRole !== "owner" && user.role === "owner") || (userRole !== "owner" && user.role === "admin" && userRole === "admin")}
+                      disabled={processingId === user.id || userRole !== "owner"}
                       onChange={(e) => changeRole(user.id, e.target.value as "user"|"staff"|"admin"|"owner")}
                     >
                       <option value="user">User</option>
-                      {(userRole === "admin" || userRole === "owner") && <option value="staff">Staff</option>}
-                      {userRole === "owner" && <option value="admin">Admin</option>}
-                      {userRole === "owner" && <option value="owner">Owner</option>}
+                      {userRole === "owner" && (
+                        <>
+                          <option value="staff">Staff</option>
+                          <option value="admin">Admin</option>
+                          <option value="owner">Owner</option>
+                        </>
+                      )}
+                      {/* Show current role even if not owner, but it's disabled anyway */}
+                      {userRole !== "owner" && user.role && user.role !== "user" && (
+                        <option value={user.role}>{user.role.charAt(0).toUpperCase() + user.role.slice(1)}</option>
+                      )}
                     </select>
 
                     <Button variant={user.isBanned ? "outline" : "destructive"} size="sm"

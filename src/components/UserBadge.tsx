@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Shield, Star, Award, Crown, Wrench, ShieldAlert } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, getCountFromServer, doc, getDoc } from "firebase/firestore";
 
 interface UserBadgeProps {
   userId?: string;
@@ -17,47 +17,49 @@ const reviewCountCache: Record<string, number> = {};
 
 export default function UserBadge({ userId, reviewCount: initialCount, role = "user", className = "" }: UserBadgeProps) {
   const [count, setCount] = useState<number | null>(initialCount ?? null);
+  const [fetchedRole, setFetchedRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // If initialCount is provided, we just use it directly (state initialized above).
-    // No need to synchronously set state here unless it changes after mount.
-    if (initialCount !== undefined && count !== initialCount) {
-      const timer = setTimeout(() => setCount(initialCount), 0);
-      return () => clearTimeout(timer);
-    }
+    if (!userId) return;
 
-    if (initialCount !== undefined || !userId) return;
-
-    if (reviewCountCache[userId] !== undefined) {
-      const cached = reviewCountCache[userId];
-      if (count !== cached) {
-        const timer = setTimeout(() => setCount(cached), 0);
-        return () => clearTimeout(timer);
-      }
-      return;
-    }
-
-    const fetchCount = async () => {
+    const fetchMetadata = async () => {
       try {
-        const q = query(collection(db, "reviews"), where("userId", "==", userId));
-        const snap = await getCountFromServer(q);
-        const fetchedCount = snap.data().count;
-        reviewCountCache[userId] = fetchedCount;
-        setCount(fetchedCount);
+        // 1. Fetch Role if not provided
+        if (role === "user" && !fetchedRole) {
+          const userDoc = await getDoc(doc(db, "users", userId));
+          if (userDoc.exists()) {
+            setFetchedRole(userDoc.data().role || "user");
+          }
+        }
+
+        // 2. Fetch Review Count if not provided
+        if (initialCount === undefined && count === null) {
+          if (reviewCountCache[userId] !== undefined) {
+            setCount(reviewCountCache[userId]);
+          } else {
+            const q = query(collection(db, "reviews"), where("userId", "==", userId));
+            const snap = await getCountFromServer(q);
+            const fetchedCount = snap.data().count;
+            reviewCountCache[userId] = fetchedCount;
+            setCount(fetchedCount);
+          }
+        }
       } catch (err) {
-        console.error("Failed to fetch review count for badge:", err);
+        console.error("Failed to fetch user metadata for badge:", err);
       }
     };
 
-    fetchCount();
-  }, [userId, initialCount, count]);
+    fetchMetadata();
+  }, [userId, initialCount, role, count, fetchedRole]);
 
+  const activeRole = role !== "user" ? role : ((fetchedRole || "user") as "user" | "staff" | "admin" | "owner");
+  
   let label = "";
   let icon = null;
   let colorClass = "";
 
   // 1. Check RBAC Roles first
-  if (role === "owner") {
+  if (activeRole === "owner") {
     label = "Owner";
     icon = <Crown className="w-3 h-3" />;
     colorClass = "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20";

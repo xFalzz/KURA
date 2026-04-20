@@ -10,12 +10,15 @@ import {
 import { MessageCircle, Send, Heart, Trash2, Loader2, Share2, Check } from "lucide-react";
 import UserBadge from "@/components/UserBadge";
 import Image from "next/image";
+import Link from "next/link";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 export interface Post {
   id: string;
   userId: string;
   userName: string;
   userPhoto: string | null;
+  userRole?: "user" | "staff" | "admin" | "owner";
   text: string;
   likes: number;
   likedBy?: string[];
@@ -28,6 +31,7 @@ export interface Comment {
   userId: string;
   userName: string;
   userPhoto: string | null;
+  userRole?: "user" | "staff" | "admin" | "owner";
   text: string;
   createdAt: Timestamp | null;
 }
@@ -46,14 +50,18 @@ export const formatTime = (ts: Timestamp | null) => {
   return ts.toDate().toLocaleDateString();
 };
 
-const ADMIN_UID = "7ulgrALWXPWo9rsf3VTwnGECnZl2";
-
 export default function PostItem({ post, user }: { post: Post; user: User | null }) {
+  const { userRole } = usePlatformConfig();
+  const isAdmin = userRole === "admin" || userRole === "owner";
+  
   // Derive liked/likes state from props directly — no useEffect needed
   const [hasLiked, setHasLiked] = useState(() => post.likedBy?.includes(user?.uid || "") || false);
   const [likes, setLikes] = useState(() => post.likes);
   const [isLiking, setIsLiking] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Derive canDelete for deletion (if user owns post OR is admin)
+  const canDelete = user?.uid === post.userId || isAdmin;
 
   // Comments state
   const [showComments, setShowComments] = useState(false);
@@ -62,7 +70,6 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
   const [postingComment, setPostingComment] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
 
-  const isAdmin = user?.uid === ADMIN_UID;
 
   const handleLike = async () => {
     if (!user || isLiking) return;
@@ -138,6 +145,7 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
         userId: user.uid,
         userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
         userPhoto: user.photoURL || null,
+        userRole: userRole,
         text: newComment.trim(),
         createdAt: serverTimestamp(),
       });
@@ -146,7 +154,7 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
       });
       setNewComment("");
     } catch (err) {
-      console.error("Failed to comment", err);
+      console.error("Failed to post comment:", err);
     }
     setPostingComment(false);
   };
@@ -161,19 +169,24 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
     <article className="bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-violet-500/20 transition-all shadow-sm mb-4">
       <div className="flex gap-3">
         {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden shadow-sm relative">
+        <Link 
+          href={`/profile/${post.userId}`}
+          className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden shadow-sm relative hover:ring-2 hover:ring-violet-500/50 transition-all"
+        >
           {post.userPhoto ? (
             <Image src={post.userPhoto || ""} alt="" fill sizes="40px" className="object-cover" />
           ) : (
             post.userName?.[0]?.toUpperCase() || "U"
           )}
-        </div>
+        </Link>
 
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center flex-wrap gap-2 mb-1">
-            <span className="font-bold text-sm text-foreground truncate">{post.userName}</span>
-            <UserBadge userId={post.userId} className="scale-90 origin-left" />
+            <Link href={`/profile/${post.userId}`} className="font-bold text-sm text-foreground truncate hover:text-violet-500 transition-colors">
+              {post.userName}
+            </Link>
+            <UserBadge userId={post.userId} role={post.userRole} className="scale-90 origin-left" />
             <span className="text-xs text-muted-foreground shrink-0">· {formatTime(post.createdAt)}</span>
           </div>
 
@@ -211,7 +224,7 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
             </button>
 
-            {(user?.uid === post.userId || isAdmin) && (
+            {canDelete && (
               <button
                 onClick={handleDelete}
                 className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-red-500 transition-colors ml-auto"
@@ -229,17 +242,23 @@ export default function PostItem({ post, user }: { post: Post; user: User | null
         <div className="mt-4 pt-4 border-t border-border ml-2 sm:ml-12 space-y-4">
           {comments.map(c => (
             <div key={c.id} className="flex gap-3 relative group">
-              <div className="w-8 h-8 rounded-full bg-violet-600/50 flex items-center justify-center text-white font-bold text-[10px] shrink-0 overflow-hidden relative">
+              <Link 
+                href={`/profile/${c.userId}`}
+                className="w-8 h-8 rounded-full bg-violet-600/50 flex items-center justify-center text-white font-bold text-[10px] shrink-0 overflow-hidden relative hover:ring-2 hover:ring-violet-500/50 transition-all"
+              >
                 {c.userPhoto ? (
                   <Image src={c.userPhoto || ""} alt="" fill sizes="32px" className="object-cover" />
                 ) : (
                   c.userName?.[0]?.toUpperCase() || "U"
                 )}
-              </div>
+              </Link>
               <div className="flex-1 bg-black/5 dark:bg-white/5 rounded-2xl rounded-tl-none p-3 relative">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-foreground">{c.userName}</span>
+                    <Link href={`/profile/${c.userId}`} className="font-bold text-xs text-foreground hover:text-violet-500 transition-colors">
+                      {c.userName}
+                    </Link>
+                    <UserBadge userId={c.userId} role={c.userRole} className="scale-75 origin-left" />
                     <span className="text-[10px] text-muted-foreground">{formatTime(c.createdAt)}</span>
                   </div>
                   {(user?.uid === c.userId || isAdmin) && (

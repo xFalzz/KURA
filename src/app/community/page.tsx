@@ -11,6 +11,7 @@ import { MessageCircle, Send, Gamepad2, TrendingUp, Users, Loader2, Globe } from
 import Image from "next/image";
 import Link from "next/link";
 import UserBadge from "@/components/UserBadge";
+import { usePlatformConfig } from "@/contexts/PlatformConfigContext";
 
 import PostItem, { Post } from "@/components/PostItem";
 
@@ -26,6 +27,7 @@ export default function CommunityPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const { userRole } = usePlatformConfig();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -88,6 +90,7 @@ export default function CommunityPage() {
         userId: user.uid,
         userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
         userPhoto: user.photoURL || null,
+        userRole: userRole,
         text: newPost.trim(),
         likes: 0,
         likedBy: [],
