@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     description: "Discover, track, and curate your ultimate video game collection.",
     images: ["/og-image.png"],
   },
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

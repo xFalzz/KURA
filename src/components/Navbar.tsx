@@ -121,7 +121,9 @@ export default function Navbar() {
 
           {/* Logo */}
         <Link href="/" className={`flex items-center gap-2 shrink-0 mr-2 ${isMobileSearchOpen ? 'hidden sm:flex' : ''}`}>
-          <Gamepad2 className="w-7 h-7 text-violet-500 dark:text-violet-400" />
+          <div className="relative w-7 h-7 shrink-0 rounded-lg overflow-hidden">
+            <Image src="/icon.png" alt="KURA" fill className="object-cover" />
+          </div>
           <span className="font-outfit text-xl font-black tracking-tighter text-foreground">
             {config.general.platformName}
           </span>
