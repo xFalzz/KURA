@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     description: "Discover, track, and curate your ultimate video game collection.",
     images: ["/og-image.png"],
   },
+  verification: {
+    google: "ag6S5ydysKvWFy-pDgTYRQdY9YR2kfRXFjnC1R0-hzI",
+  },
   icons: {
     icon: "/icon.png",
     apple: "/icon.png",
