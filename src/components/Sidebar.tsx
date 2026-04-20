@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { useGenres, usePlatforms } from "@/hooks/useGames";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { Heart, BookOpen, Users, Bell, PlusCircle, AlertCircle } from "lucide-react";
+import { Heart, BookOpen, Users, Bell, PlusCircle, AlertCircle, Globe } from "lucide-react";
 
 const genreIconMap: Record<string, React.ReactNode> = {
   action: <Sword className="w-4 h-4" />,
@@ -97,6 +97,7 @@ export default function Sidebar() {
       <div className="space-y-1">
         <SectionTitle href="/">Home</SectionTitle>
         <SectionTitle href="/reviews">Reviews</SectionTitle>
+        <SectionTitle href="/community">Community</SectionTitle>
         <div className="md:hidden mt-2 ml-1 space-y-0.5">
           <NavItem href="/rate/thebest" icon={<Star className="w-4 h-4" />} label="Rate Games" active={pathname === "/rate/thebest"} />
           <NavItem href="/docs" icon={<BookOpen className="w-4 h-4" />} label="Docs" active={pathname.startsWith("/docs")} />

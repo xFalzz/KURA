@@ -76,27 +76,36 @@ export default function FeedbackPage() {
 
   if (submitted) {
     return (
-      <div className="px-6 py-16 max-w-2xl mx-auto flex flex-col items-center text-center gap-5">
-        <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
-          <CheckCircle className="w-10 h-10 text-green-500" />
+      <div className="min-h-[80vh] flex items-center justify-center relative">
+        {/* Background decoration */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-linear-to-br from-violet-500/10 via-fuchsia-500/5 to-transparent rounded-full blur-3xl -z-10" />
+        <div className="px-6 py-16 max-w-2xl mx-auto flex flex-col items-center text-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-outfit font-black text-foreground mb-2">Thank you!</h1>
+            <p className="text-muted-foreground">
+              Your feedback has been received. We review every submission and use it to improve KURA.
+            </p>
+          </div>
+          <button
+            onClick={() => { setSubmitted(false); setTitle(""); setMessage(""); setRating(0); setCategory(""); setEmail(""); setErrors({}); }}
+            className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            Submit another
+          </button>
         </div>
-        <div>
-          <h1 className="text-3xl font-outfit font-black text-foreground mb-2">Thank you!</h1>
-          <p className="text-muted-foreground">
-            Your feedback has been received. We review every submission and use it to improve KURA.
-          </p>
-        </div>
-        <button
-          onClick={() => { setSubmitted(false); setTitle(""); setMessage(""); setRating(0); setCategory(""); setEmail(""); setErrors({}); }}
-          className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-xl transition-colors"
-        >
-          Submit another
-        </button>
       </div>
     );
   }
 
   return (
+    <div className="relative">
+      {/* Background gradient decorations */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-linear-to-br from-violet-500/10 via-fuchsia-500/5 to-transparent rounded-full blur-3xl -z-10" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-linear-to-tl from-blue-500/5 to-transparent rounded-full blur-3xl -z-10" />
+
     <div className="px-4 sm:px-6 py-8 sm:py-10 max-w-2xl mx-auto">
       {/* Back to Home Button */}
       <div className="mb-8">
@@ -256,6 +265,7 @@ export default function FeedbackPage() {
           By submitting, you agree that your feedback may be used to improve KURA.
         </p>
       </form>
+    </div>
     </div>
   );
 }

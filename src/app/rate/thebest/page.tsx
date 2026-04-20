@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Star, ChevronLeft, ChevronRight, Gamepad2, Trophy, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { db } from "@/lib/firebase";
@@ -44,6 +45,7 @@ export default function RateTopGamesPage() {
   const [saving, setSaving] = useState(false);
   const [userRatings, setUserRatings] = useState<Record<number, UserRating>>({});
   const [totalRated, setTotalRated] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, setUser);
@@ -104,9 +106,14 @@ export default function RateTopGamesPage() {
       setTotalRated(n => n + 1);
     } catch { /* ignore */ }
     setSaving(false);
-    // Auto-advance after rating
+    // Auto-advance after rating, or redirect if last game
     setTimeout(() => {
-      if (currentIdx < games.length - 1) setCurrentIdx(i => i + 1);
+      if (currentIdx < games.length - 1) {
+        setCurrentIdx(i => i + 1);
+      } else {
+        // All games rated — redirect to reviews
+        router.push("/reviews");
+      }
     }, 600);
   };
 
@@ -149,10 +156,15 @@ export default function RateTopGamesPage() {
         <div className="text-center py-16">
           <Gamepad2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-foreground mb-2">You&apos;ve rated everything!</h2>
-          <p className="text-muted-foreground text-sm mb-6">Impressive. Check your profile to see all your ratings.</p>
-          <Link href="/profile" className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-xl transition-colors">
-            View Profile
-          </Link>
+          <p className="text-muted-foreground text-sm mb-6">Impressive. Check out the latest community reviews.</p>
+          <div className="flex gap-3 justify-center">
+            <Link href="/reviews" className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-xl transition-colors">
+              View Reviews
+            </Link>
+            <Link href="/profile" className="px-6 py-2.5 bg-card border border-border hover:border-violet-500/30 text-foreground text-sm font-bold rounded-xl transition-colors">
+              My Profile
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="w-full max-w-lg">

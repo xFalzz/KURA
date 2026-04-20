@@ -3,21 +3,42 @@
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import Footer from "@/components/Footer";
 import GuestBanner from "@/components/GuestBanner";
 import GlobalBanner from "@/components/GlobalBanner";
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
+  // Pages that render completely independently (own navbar/layout)
   const isStandalonePage = 
     pathname?.startsWith("/admin") || 
-    pathname?.startsWith("/docs") || 
     pathname?.startsWith("/login") || 
-    pathname?.startsWith("/register") || 
+    pathname?.startsWith("/register");
+
+  // Pages that get Navbar + Footer but NO sidebar (full-width content)
+  const isFullWidthPage =
+    pathname?.startsWith("/docs") ||
     pathname?.startsWith("/feedback");
 
   if (isStandalonePage) {
     return <>{children}</>;
+  }
+
+  if (isFullWidthPage) {
+    return (
+      <>
+        <GlobalBanner />
+        <GuestBanner />
+        <Navbar />
+        <main className="min-h-[calc(100vh-64px)]">
+          <div className="w-full">
+            {children}
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
   }
 
   return (
