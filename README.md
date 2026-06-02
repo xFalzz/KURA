@@ -175,7 +175,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:nomor_sender:web:id_app_firebase_anda
 # Admin Configuration (Opsional)
 # -------------------------
 # Konfigurasikan email dan UID akun Anda yang ingin dijadikan sebagai Super Admin
-NEXT_PUBLIC_ADMIN_EMAIL=admin@kura.com
+NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email
 NEXT_PUBLIC_ADMIN_UID=id_uid_firebase_auth_admin_anda
 ```
 
